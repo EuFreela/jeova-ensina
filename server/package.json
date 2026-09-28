@@ -1,0 +1,35 @@
+{
+  "name": "adivinhacao-biblica-server",
+  "version": "1.0.0",
+  "description": "API do jogo Adivinhação Bíblica",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "seed": "node src/seeders/seedPerguntas.js",
+    "sync": "node src/seeders/syncModels.js",
+    "export:perguntas": "node src/seeders/exportarPerguntas.js"
+  },
+  "keywords": [
+    "biblia",
+    "quiz",
+    "express"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "express-rate-limit": "^7.4.0",
+    "jsonwebtoken": "^9.0.2",
+    "sequelize": "^6.37.3",
+    "sqlite3": "^5.1.7"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.4"
+  },
+  "allowScripts": {
+    "sqlite3@5.1.7": true
+  }
+}
