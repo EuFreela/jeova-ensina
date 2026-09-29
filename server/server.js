@@ -1,6 +1,8 @@
 require('dotenv').config();
+const http = require('http');
 const app = require('./src/app');
 const sequelize = require('./src/config/database');
+const criarRealtime = require('./src/realtime');
 
 const PORT = Number(process.env.PORT) || 3001;
 
@@ -14,9 +16,13 @@ async function iniciar() {
     process.exit(1);
   }
 
-  app.listen(PORT, () => {
+  const httpServer = http.createServer(app);
+  criarRealtime(httpServer);
+
+  httpServer.listen(PORT, () => {
     console.log(`API rodando em http://localhost:${PORT}`);
     console.log(`Health check: http://localhost:${PORT}/api/health`);
+    console.log('Tempo real (sessoes) ativo via WebSocket');
   });
 }
 

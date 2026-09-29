@@ -40,12 +40,29 @@ Pontuacao.init(
       defaultValue: 0,
       validate: { min: 0 },
     },
+    /**
+     * 'solo'      -> jogo individual (o jogador nao tem ninguem para ultrapassar).
+     * 'campeonato' -> jogo com outras pessoas, disputando pontuacao entre si.
+     * Os dois ficam em rankings separados, pois a pontuacao nao e comparable:
+     * no campeonato a mesma nota pode render primeiro ou ultimo.
+     */
+    modo: {
+      type: DataTypes.STRING(20),
+      allowNull: false,
+      defaultValue: 'solo',
+      validate: {
+        isIn: {
+          args: [['solo', 'campeonato']],
+          msg: 'Modo de jogo inválido',
+        },
+      },
+    },
   },
   {
     sequelize,
     modelName: 'Pontuacao',
     tableName: 'pontuacoes',
-    indexes: [{ fields: ['user_id'] }, { fields: ['pontuacao'] }],
+    indexes: [{ fields: ['user_id'] }, { fields: ['pontuacao'] }, { fields: ['modo'] }],
   }
 );
 

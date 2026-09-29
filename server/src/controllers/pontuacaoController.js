@@ -3,8 +3,15 @@ const Pontuacao = require('../models/Pontuacao');
 const User = require('../models/User');
 const Pergunta = require('../models/Pergunta');
 const { calcularPontuacao } = require('../utils/scoring');
+const { normalizar } = require('../utils/texto');
 
 const LIMITE_RANKING = 10;
+const MODOS = ['solo', 'campeonato'];
+
+/** Garante que o modo recebido seja valido; partidas sem modo contam como solo. */
+function normalizarModo(modo) {
+  return MODOS.includes(modo) ? modo : 'solo';
+}
 
 /**
  * As opcoes são embaralhadas a cada GET /api/perguntas, entao o indice exibido
@@ -13,12 +20,6 @@ const LIMITE_RANKING = 10;
  * opcao correta original. Assim o servidor continua sendo a fonte da verdade
  * sem depender da ordem aleatoria de cada partida.
  */
-function normalizar(texto) {
-  return String(texto ?? '')
-    .trim()
-    .replace(/\s+/g, ' ')
-    .toLocaleLowerCase('pt-BR');
-}
 
 async function salvar(req, res) {
   const { respostas } = req.body || {};
@@ -59,6 +60,7 @@ async function salvar(req, res) {
     pontuacao: resultado.pontuacao,
     acertos: resultado.acertos,
     total_perguntas: resultado.total_perguntas,
+    modo: normalizarModo(req.body?.modo),
   });
 
   return res.status(201).json({
@@ -76,6 +78,31 @@ async function salvar(req, res) {
 async function ranking(req, res) {
   const limite = Math.min(Math.max(parseInt(req.query.limite, 10) || LIMITE_RANKING, 1), 50);
 
+  // Solo e Campeonato sao rankings SEPARADOS: no campeonato a pontuacao
+  // vale na disputa entre os jogadores da mesma partida, entao juntar os dois
+  // em uma lista traria numeros sem comparacao. "todos" continua disponivel
+  // para consultas administrativas.
+  const modo = req.query.modo;
+  if (modo && !MODOS.includes(modo) && modo !== 'todos') {
+    return res.status(400).json({ error: 'Modo de ranking inválido' });
+  }
+  const filtroModo = modo && modo !== 'todos' ? { modo } : {};
+
+  // Quem marcou o ranking solo como privado some da lista alheia, mas continua
+  // aparecendo para si mesmo. O filtro e por user_id porque a agregacao roda
+  // sobre pontuacoes, que nao tem a preferencia do usuario.
+  let filtroPrivacidade = {};
+  if (modo === 'solo') {
+    const privados = await User.findAll({
+      where: { ranking_publico: false, ...(req.userId ? { id: { [Op.ne]: req.userId } } : {}) },
+      attributes: ['id'],
+      raw: true,
+    });
+    if (privados.length > 0) {
+      filtroPrivacidade = { user_id: { [Op.notIn]: privados.map((u) => u.id) } };
+    }
+  }
+
   // Agregacao sem JOIN: o SQLite exige que toda coluna nao agregada do SELECT
   // apareca no GROUP BY, e o Postgres se comporta igual.
   const records = await Pontuacao.findAll({
@@ -84,6 +111,7 @@ async function ranking(req, res) {
       [fn('MAX', col('pontuacao')), 'recorde'],
       [fn('COUNT', col('id')), 'jogos'],
     ],
+    where: { ...filtroModo, ...filtroPrivacidade },
     group: ['user_id'],
     order: [[literal('recorde'), 'DESC']],
     limit: limite,
@@ -91,7 +119,7 @@ async function ranking(req, res) {
   });
 
   if (records.length === 0) {
-    return res.json({ ranking: [], limite, minhaPosicao: null });
+    return res.json({ ranking: [], limite, minhaPosicao: null, modo: modo || 'todos' });
   }
 
   const userIds = records.map((r) => r.user_id);
@@ -106,7 +134,7 @@ async function ranking(req, res) {
   const melhoresJogos = await Promise.all(
     records.map((r) =>
       Pontuacao.findOne({
-        where: { user_id: r.user_id },
+        where: { user_id: r.user_id, ...filtroModo },
         order: [['pontuacao', 'DESC']],
         attributes: ['acertos', 'total_perguntas'],
         raw: true,
@@ -126,13 +154,20 @@ async function ranking(req, res) {
       souEu: r.user_id === req.userId,
     })),
     limite,
+    modo: modo || 'todos',
     minhaPosicao: records.findIndex((r) => r.user_id === req.userId) + 1 || null,
   });
 }
 
 async function minhas(req, res) {
+  const modo = req.query.modo;
+  if (modo && !MODOS.includes(modo)) {
+    return res.status(400).json({ error: 'Modo inválido' });
+  }
+  const filtroModo = modo ? { modo } : {};
+
   const registros = await Pontuacao.findAll({
-    where: { user_id: req.userId },
+    where: { user_id: req.userId, ...filtroModo },
     order: [['created_at', 'DESC']],
     limit: 20,
   });
@@ -140,13 +175,26 @@ async function minhas(req, res) {
   const recorde = registros.reduce((acc, p) => Math.max(acc, p.pontuacao), 0);
   const pontosTotais = registros.reduce((acc, p) => acc + p.pontuacao, 0);
 
+  // Resumo separado por modo: o perfil mostra os dois lado a lado.
+  const resumoPorModo = {};
+  for (const m of MODOS) {
+    const doModo = registros.filter((p) => p.modo === m);
+    resumoPorModo[m] = {
+      recorde: doModo.reduce((acc, p) => Math.max(acc, p.pontuacao), 0),
+      pontosTotais: doModo.reduce((acc, p) => acc + p.pontuacao, 0),
+      jogos: doModo.length,
+    };
+  }
+
   return res.json({
     pontuacoes: registros,
+    modo: modo || 'todos',
     resumo: {
       recorde,
       pontosTotais,
       jogos: registros.length,
     },
+    resumoPorModo,
   });
 }
 

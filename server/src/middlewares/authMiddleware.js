@@ -1,4 +1,5 @@
 const jwt = require('jsonwebtoken');
+const User = require('../models/User');
 
 function authMiddleware(req, res, next) {
   const authHeader = req.headers.authorization;
@@ -26,4 +27,26 @@ function authMiddleware(req, res, next) {
   }
 }
 
+/**
+ * RBAC: exige que o usuario autenticado seja administrador.
+ * Consulta o banco (e nao apenas o token) para que revogacoes de acesso
+ * tenham efeito imediato.
+ */
+async function requireAdmin(req, res, next) {
+  try {
+    const user = await User.findByPk(req.userId);
+    if (!user) {
+      return res.status(401).json({ error: 'Usuário não encontrado' });
+    }
+    if (user.role !== 'admin') {
+      return res.status(403).json({ error: 'Acesso restrito a administradores' });
+    }
+    req.userRole = user.role;
+    return next();
+  } catch (err) {
+    return next(err);
+  }
+}
+
 module.exports = authMiddleware;
+module.exports.requireAdmin = requireAdmin;

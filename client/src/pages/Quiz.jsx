@@ -1,38 +1,68 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import Botao from '../components/Botao';
-import Card from '../components/Card';
+import { BookOpen, ChevronRight, CircleCheck, CircleX, Clock, Heart } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useGame } from '../contexts/GameContext';
+import { useConfirmacao } from '../contexts/ConfirmacaoContext';
 import { buscarPerguntas, salvarPontuacao } from '../services/perguntas';
 import { calcularPontuacao, PONTOS_POR_DIFICULDADE } from '../services/scoring';
+import AnswerOption from '../components/ui/AnswerOption';
+import Card from '../components/ui/Card';
+import ProgressBar from '../components/ui/ProgressBar';
+import PrimaryButton from '../components/ui/PrimaryButton';
+import SecondaryButton from '../components/ui/SecondaryButton';
+import LoadingState from '../components/ui/LoadingState';
+import EmptyState from '../components/ui/EmptyState';
 
-const TEMPO_POR_QUESTAO = 30;
-const ESPERA_FEEDBACK = 1500;
+const ESPERA_LEITURA = 2000;
 
-const LETRAS = ['A', 'B', 'C', 'D', 'E', 'F'];
+function Vidas({ atuais, total }) {
+  return (
+    <span className="flex items-center gap-1" aria-label={`${atuais} de ${total} vidas`}>
+      {Array.from({ length: total }, (_, i) => (
+        <Heart
+          key={i}
+          size={15}
+          aria-hidden="true"
+          className={i < atuais ? 'text-error' : 'text-line'}
+          fill={i < atuais ? 'currentColor' : 'none'}
+        />
+      ))}
+    </span>
+  );
+}
 
 export default function Quiz() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { config, registrarResultado, definirSalvamento, reiniciar } = useGame();
+  const confirmar = useConfirmacao();
 
   const [perguntas, setPerguntas] = useState([]);
   const [indice, setIndice] = useState(0);
   const [respostas, setRespostas] = useState([]);
   const [selecionada, setSelecionada] = useState(null);
-  const [tempo, setTempo] = useState(TEMPO_POR_QUESTAO);
+  const [vidas, setVidas] = useState(config.vidas);
+  const [tempo, setTempo] = useState(config.tempoPorQuestao);
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [origem, setOrigem] = useState(null);
 
   const travadoRef = useRef(false);
   const timerRef = useRef(null);
+  const responderRef = useRef(null);
+  const encerrandoRef = useRef(false);
 
   const atual = perguntas[indice];
   const ultimo = indice === perguntas.length - 1;
-  const progresso = perguntas.length ? ((indice + (selecionada !== null ? 1 : 0)) / perguntas.length) * 100 : 0;
+  const relogioAtivo = config.tempoPorQuestao > 0;
+  const respondida = selecionada !== null;
+  const acabouVidas = vidas <= 0;
+
   const parcial = calcularPontuacao(respostas);
+  const progresso = perguntas.length
+    ? ((indice + (respondida ? 1 : 0)) / perguntas.length) * 100
+    : 0;
 
   useEffect(() => {
     let cancelado = false;
@@ -48,12 +78,8 @@ export default function Quiz() {
         });
         if (cancelado) return;
         setOrigem(fonte);
-        if (!lista.length) {
-          setErro('Nenhuma pergunta encontrada para esse filtro.');
-          setPerguntas([]);
-        } else {
-          setPerguntas(lista);
-        }
+        setPerguntas(lista);
+        if (!lista.length) setErro('Nenhuma pergunta encontrada para esse filtro.');
       } catch {
         if (!cancelado) setErro('Não foi possível carregar as perguntas.');
       } finally {
@@ -69,246 +95,292 @@ export default function Quiz() {
 
   const encerrarPartida = useCallback(
     async (todasAsRespostas, fonte) => {
-      const resultado = calcularPontuacao(todasAsRespostas);
-      registrarResultado({ ...resultado, origem: fonte, salvo: false });
+      if (encerrandoRef.current) return;
+      encerrandoRef.current = true;
 
+      const resultado = calcularPontuacao(todasAsRespostas);
+      const motivo = vidas <= 0 ? 'vidas' : 'completa';
+      // Guarda as respostas para permitir reenviar a pontuacao sem perder o resultado.
+      const base = {
+        ...resultado,
+        origem: fonte,
+        salvo: false,
+        motivo,
+        respostas: todasAsRespostas,
+      };
+      registrarResultado(base);
       navigate('/resultado', { replace: true });
 
       if (fonte !== 'api') {
-        definirSalvamento({ carregando: false, erro: 'Partida offline: pontuação não salva no ranking.' });
+        definirSalvamento({
+          carregando: false,
+          erro: 'Partida offline: pontuação não salva no ranking.',
+        });
         return;
       }
 
       definirSalvamento({ carregando: true, erro: null });
       try {
-        const payload = todasAsRespostas.map((r) => ({
-          perguntaId: r.perguntaId,
-          resposta: r.opcaoEscolhida,
-        }));
+        // Perguntas sem resposta (tempo esgotado) vao como texto vazio e contam
+        // como erro no servidor, preservando o total de perguntas da partida.
+        const payload = todasAsRespostas
+          .filter((r) => r.perguntaId != null)
+          .map((r) => ({ perguntaId: r.perguntaId, resposta: r.opcaoEscolhida ?? '' }));
+
         const { resumo } = await salvarPontuacao(payload);
         registrarResultado({
-          ...resultado,
+          ...base,
           pontos: resumo.pontuacao,
+          acertos: resumo.acertos,
+          total: resumo.total_perguntas,
           bonusTotal: resumo.bonusTotal,
           comboMaximo: resumo.comboMaximo,
           salvo: true,
         });
         definirSalvamento({ carregando: false, erro: null });
       } catch (e) {
-        definirSalvamento({ carregando: false, erro: e?.response?.data?.error || 'Não foi possível salvar a pontuação.' });
+        definirSalvamento({
+          carregando: false,
+          erro: e?.response?.data?.error || 'Não foi possível salvar a pontuação.',
+        });
       }
     },
-    [navigate, registrarResultado, definirSalvamento]
+    [definirSalvamento, navigate, registrarResultado, vidas]
   );
 
-  const avancar = useCallback(
-    (novaSelecao) => {
-      const correta = novaSelecao === atual.resposta_correta;
+  const responder = useCallback(
+    (escolha) => {
+      if (travadoRef.current || !atual) return;
+      travadoRef.current = true;
+      if (timerRef.current) window.clearInterval(timerRef.current);
+
+      const correta = escolha === atual.resposta_correta;
       const novasRespostas = [
         ...respostas,
         {
           perguntaId: atual.id,
-          escolha: novaSelecao,
-          opcaoEscolhida: novaSelecao >= 0 ? atual.opcoes[novaSelecao] : null,
+          escolha,
+          opcaoEscolhida: escolha >= 0 ? atual.opcoes[escolha] : '',
           correta,
           dificuldade: atual.dificuldade,
         },
       ];
-      setRespostas(novasRespostas);
 
-      if (ultimo) {
-        window.setTimeout(() => encerrarPartida(novasRespostas, origem), ESPERA_FEEDBACK);
-      } else {
-        window.setTimeout(() => {
-          setIndice((i) => i + 1);
-          setSelecionada(null);
-          setTempo(TEMPO_POR_QUESTAO);
-        }, ESPERA_FEEDBACK);
-      }
+      setSelecionada(escolha);
+      setRespostas(novasRespostas);
+      if (!correta) setVidas(vidas - 1);
     },
-    [atual, respostas, ultimo, encerrarPartida, origem]
+    [atual, respostas, vidas]
   );
 
-  useEffect(() => {
-    if (selecionada !== null || !atual) return undefined;
+  responderRef.current = responder;
 
-    travadoRef.current = false;
-    timerRef.current = window.setInterval(() => {
+  // Cronometro opcional: so roda quando a partida habilita tempo por pergunta.
+  useEffect(() => {
+    if (!relogioAtivo || respondida || !atual) return undefined;
+
+    setTempo(config.tempoPorQuestao);
+
+    const id = window.setInterval(() => {
       setTempo((restante) => {
         if (restante <= 1) {
-          window.clearInterval(timerRef.current);
-          if (!travadoRef.current) {
-            travadoRef.current = true;
-            window.setTimeout(() => avancar(-1), 0);
-          }
+          window.clearInterval(id);
+          window.setTimeout(() => responderRef.current?.(-1), 0);
           return 0;
         }
         return restante - 1;
       });
     }, 1000);
 
-    return () => window.clearInterval(timerRef.current);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [indice, selecionada, atual]);
+    timerRef.current = id;
+    return () => window.clearInterval(id);
+  }, [indice, respondida, atual, relogioAtivo, config.tempoPorQuestao]);
 
-  function responder(i) {
-    if (selecionada !== null || travadoRef.current) return;
-    travadoRef.current = true;
-    window.clearInterval(timerRef.current);
-    setSelecionada(i);
-    avancar(i);
+  function proxima() {
+    if (ultimo || acabouVidas) {
+      encerrarPartida(respostas, origem);
+      return;
+    }
+    travadoRef.current = false;
+    setIndice((i) => i + 1);
+    setSelecionada(null);
+    setTempo(config.tempoPorQuestao);
   }
 
-  function sairPartida() {
+  async function abandonar() {
+    const sair = await confirmar({
+      titulo: 'Abandonar a partida?',
+      descricao: 'Seu progresso nesta partida será perdido e a pontuação não será salva.',
+      textoConfirmar: 'Abandonar',
+      perigo: true,
+    });
+    if (!sair) return;
     reiniciar();
-    navigate('/menu', { replace: true });
+    navigate('/inicio', { replace: true });
   }
 
   if (carregando) {
-    return (
-      <div className="flex min-h-[50dvh] flex-col items-center justify-center gap-3">
-        <span className="size-8 animate-spin rounded-full border-3 border-primaria border-t-transparent" />
-        <p className="text-texto-suave">Carregando perguntas...</p>
-      </div>
-    );
+    return <LoadingState mensagem="Carregando perguntas..." />;
   }
 
   if (erro || !atual) {
     return (
-      <Card className="flex flex-col items-center gap-4 text-center">
-        <p className="text-texto">{erro || 'Não foi possível iniciar a partida.'}</p>
-        <Botao onClick={() => navigate('/menu')}>Voltar ao Menu</Botao>
-      </Card>
+      <div className="flex flex-col gap-4">
+        <EmptyState
+          icone={<BookOpen size={22} />}
+          titulo="Sem perguntas"
+          descricao={erro || 'Não foi possível iniciar a partida.'}
+        />
+        <PrimaryButton onClick={() => navigate('/inicio')}>Voltar ao Início</PrimaryButton>
+      </div>
     );
   }
 
-  const respondida = selecionada !== null;
   const acertou = respondida && selecionada === atual.resposta_correta;
   const esgotouTempo = respondida && selecionada === -1;
   const valorDificuldade = PONTOS_POR_DIFICULDADE[atual.dificuldade] ?? 10;
 
-  function estiloOpcao(i) {
-    if (!respondida) return 'border-white/15 bg-white/5 hover:border-primaria/60 hover:bg-white/10';
-    if (i === atual.resposta_correta) return 'border-sucesso bg-sucesso/15 text-texto';
-    if (i === selecionada) return 'border-erro bg-erro/15 text-texto';
-    return 'border-white/10 bg-white/5 opacity-50';
+  function estadoOpcao(i) {
+    if (!respondida) return 'padrao';
+    if (i === atual.resposta_correta) return 'correta';
+    if (i === selecionada) return 'incorreta';
+    return 'esmaecida';
   }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="sticky top-[57px] z-10 -mx-4 bg-fundo/95 px-4 py-3 backdrop-blur">
-        <div className="flex items-center justify-between text-sm">
-          <span className="truncate font-medium text-texto-suave">{user?.username}</span>
-          <span className="flex items-center gap-3">
-            <span className="font-display font-bold text-primaria">{parcial.pontos} pts</span>
-            <span className="text-texto-suave">
-              {indice + 1}/{perguntas.length}
+      {/* Painel da partida */}
+      <div className="flex flex-col gap-2 rounded-card border border-line bg-surface p-4 shadow-panel">
+        <div className="flex items-center justify-between gap-3 text-sm">
+          <span className="truncate font-medium text-secondary">{user?.username}</span>
+          <span className="flex shrink-0 items-center gap-3">
+            <Vidas atuais={vidas} total={config.vidas} />
+            <span className="font-display font-bold text-primary tabular-nums">
+              {parcial.pontos} pts
             </span>
           </span>
         </div>
 
-        <div
-          className="mt-2 h-2 overflow-hidden rounded-full bg-white/10"
-          role="progressbar"
-          aria-valuenow={Math.round(progresso)}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-label="Progresso da partida"
-        >
-          <div
-            className="h-full rounded-full bg-primaria transition-all duration-500 ease-out"
-            style={{ width: `${progresso}%` }}
-          />
-        </div>
+        <ProgressBar valor={progresso} rotulo="Progresso da partida" />
 
-        <div className="mt-2 flex items-center justify-between text-xs">
-          <span className="text-texto-suave">
-            {respondida
-              ? acertou
-                ? `+${valorDificuldade} pts${parcial.bonusTotal ? ' (com bônus)' : ''}`
-                : 'Sem pontos'
-              : `${atual.dificuldade} · vale ${valorDificuldade} pts`}
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <span className="text-text-muted">
+            Pergunta {indice + 1} de {perguntas.length}
           </span>
-          <span
-            className={[
-              'font-display font-semibold tabular-nums',
-              tempo <= 10 ? 'text-erro animate-pulse-suave' : 'text-texto-suave',
-            ].join(' ')}
-          >
-            {tempo}s
-          </span>
+          {relogioAtivo && (
+            <span
+              className={[
+                'flex items-center gap-1 font-display font-semibold tabular-nums',
+                tempo <= 10 ? 'animate-pulse-suave text-error' : 'text-secondary',
+              ].join(' ')}
+            >
+              <Clock size={13} aria-hidden="true" />
+              {tempo}s
+            </span>
+          )}
         </div>
       </div>
 
       {parcial.combo >= 2 && !respondida && (
-        <p className="animate-pop self-center rounded-full bg-primaria/20 px-4 py-1 text-sm font-semibold text-primaria">
-          Combo de {parcial.combo} acertos! {parcial.combo >= 5 ? '+15 bônus' : parcial.combo >= 3 ? '+5 bônus' : ''}
+        <p className="animate-pop self-center rounded-full bg-accent/20 px-4 py-1 text-sm font-semibold text-primary-dark">
+          Combo de {parcial.combo} acertos!
+          {parcial.combo >= 5 ? ' +15 bônus' : parcial.combo >= 3 ? ' +5 bônus' : ''}
         </p>
       )}
 
-      <Card key={atual.id} className="animate-slide-up flex flex-col gap-5">
+      {/* Pergunta */}
+      <Card className="flex flex-col gap-5">
         <div>
-          <p className="text-xs uppercase tracking-wide text-texto-suave/70">
+          <p className="text-xs font-medium tracking-wide text-text-muted uppercase">
             {atual.categoria}
             {atual.referencia ? ` · ${atual.referencia}` : ''}
           </p>
-          <h2 className="mt-2 font-display text-xl font-semibold leading-snug text-texto sm:text-2xl">
+          <h2 className="mt-2 font-display text-xl leading-snug font-semibold text-primary-dark sm:text-2xl">
             {atual.pergunta}
           </h2>
         </div>
 
         <div className="flex flex-col gap-2.5">
           {atual.opcoes.map((opcao, i) => (
-            <button
-              key={opcao}
-              type="button"
-              onClick={() => responder(i)}
-              disabled={respondida}
-              className={[
-                'flex items-center gap-3 rounded-xl border px-4 py-3.5 text-left transition-all duration-200',
-                estiloOpcao(i),
-              ].join(' ')}
-            >
-              <span
-                className={[
-                  'grid size-8 shrink-0 place-items-center rounded-lg font-display text-sm font-bold',
-                  respondida && i === atual.resposta_correta
-                    ? 'bg-sucesso text-fundo'
-                    : respondida && i === selecionada
-                      ? 'bg-erro text-white'
-                      : 'bg-white/10 text-texto-suave',
-                ].join(' ')}
-              >
-                {respondida && i === atual.resposta_correta ? '✓' : respondida && i === selecionada ? '✕' : LETRAS[i]}
-              </span>
-              <span className="text-[15px] leading-snug">{opcao}</span>
-            </button>
+            <AnswerOption
+              key={`${atual.id}-${i}`}
+              indice={i}
+              texto={opcao}
+              estado={estadoOpcao(i)}
+              desabilitada={respondida}
+              onSelecionar={() => responder(i)}
+            />
           ))}
         </div>
       </Card>
 
+      {/* Feedback */}
       {respondida && (
         <div
           className={[
-            'animate-pop rounded-xl border px-4 py-3 text-center text-sm font-medium',
+            'animate-pop flex items-start gap-3 rounded-field border px-4 py-3 text-sm',
             esgotouTempo
-              ? 'border-texto-suave/30 bg-white/5 text-texto-suave'
+              ? 'border-line bg-background text-secondary'
               : acertou
-                ? 'border-sucesso/40 bg-sucesso/10 text-sucesso'
-                : 'border-erro/40 bg-erro/10 text-erro',
+                ? 'border-success/40 bg-success-light text-success'
+                : 'border-error/40 bg-error-light text-error',
           ].join(' ')}
         >
-          {esgotouTempo
-            ? 'Tempo esgotado! A resposta correta é a destacada.'
-            : acertou
-              ? 'Correto!'
-              : `Resposta correta: ${atual.opcoes[atual.resposta_correta]}`}
+          <span className="mt-0.5 shrink-0" aria-hidden="true">
+            {esgotouTempo ? (
+              <Clock size={18} />
+            ) : acertou ? (
+              <CircleCheck size={18} />
+            ) : (
+              <CircleX size={18} />
+            )}
+          </span>
+          <div className="min-w-0">
+            <p className="font-semibold">
+              {esgotouTempo
+                ? 'Tempo esgotado!'
+                : acertou
+                  ? `Resposta correta! +${valorDificuldade} pts`
+                  : 'Resposta incorreta.'}
+            </p>
+            {!acertou && (
+              <p className="mt-1">
+                Resposta correta:{' '}
+                <strong className="font-semibold">{atual.opcoes[atual.resposta_correta]}</strong>
+              </p>
+            )}
+            {atual.referencia && (
+              <p className="mt-1 text-xs opacity-80">Referência: {atual.referencia}</p>
+            )}
+          </div>
         </div>
       )}
 
-      <Botao variante="fantasma" onClick={sairPartida} className="self-center text-sm">
-        Abandonar partida
-      </Botao>
+      {/* Fim de jogo por vidas */}
+      {acabouVidas && (
+        <p className="rounded-field border border-error/30 bg-error-light px-4 py-3 text-center text-sm font-medium text-error">
+          Suas vidas acabaram. Veja o resultado da partida.
+        </p>
+      )}
+
+      {/* Avanco manual: liberado somente depois de responder */}
+      <div className="flex flex-col gap-2.5">
+        <PrimaryButton
+          tamanho="lg"
+          larguraTotal
+          onClick={proxima}
+          desabilitado={!respondida}
+          iconeFim={
+            ultimo || acabouVidas ? undefined : <ChevronRight size={18} aria-hidden="true" />
+          }
+        >
+          {ultimo || acabouVidas ? 'Ver Resultado' : 'Próxima Pergunta'}
+        </PrimaryButton>
+
+        <SecondaryButton variante="fantasma" onClick={abandonar} className="self-center text-sm">
+          Abandonar partida
+        </SecondaryButton>
+      </div>
     </div>
   );
 }

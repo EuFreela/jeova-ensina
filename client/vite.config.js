@@ -5,11 +5,18 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: {
+    host: '0.0.0.0',
     port: 5173,
     proxy: {
       '/api': {
         target: 'http://localhost:3002',
         changeOrigin: true,
+      },
+      // WebSocket das sessoes de jogo (Socket.IO)
+      '/socket.io': {
+        target: 'http://localhost:3002',
+        changeOrigin: true,
+        ws: true,
       },
     },
   },

@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "seed": "node src/seeders/seedPerguntas.js",
     "sync": "node src/seeders/syncModels.js",
+    "criar:admin": "node src/seeders/criarAdmin.js",
     "export:perguntas": "node src/seeders/exportarPerguntas.js"
   },
   "keywords": [
@@ -24,6 +25,7 @@
     "express-rate-limit": "^7.4.0",
     "jsonwebtoken": "^9.0.2",
     "sequelize": "^6.37.3",
+    "socket.io": "^4.8.4",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {

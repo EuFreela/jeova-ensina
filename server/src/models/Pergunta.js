@@ -3,6 +3,13 @@ const sequelize = require('../config/database');
 
 const DIFICULDADES = ['facil', 'medio', 'dificil'];
 
+/** `opcoes` e guardado como JSON; aceita string ou array. */
+function saoOpcoesValidas(value) {
+  const parsed = typeof value === 'string' ? JSON.parse(value) : value;
+  return Array.isArray(parsed) && parsed.length >= 2;
+}
+saoOpcoesValidas.msg = 'Opções devem ser um array com pelo menos 2 itens';
+
 class Pergunta extends Model {
   static get DIFICULDADES() {
     return DIFICULDADES;
@@ -50,12 +57,11 @@ Pergunta.init(
       set(value) {
         this.setDataValue('opcoes', JSON.stringify(value));
       },
+      // No Sequelize 6 o validador de atributo precisa ser uma funcao pura;
+      // a mensagem vai pendurada nela. O formato com { validator, msg }
+      // quebra em qualquer save() com "Invalid validator function".
       validate: {
-        isValid(value) {
-          const parsed = typeof value === 'string' ? JSON.parse(value) : value;
-          return Array.isArray(parsed) && parsed.length >= 2;
-        },
-        msg: 'Opções devem ser um array com pelo menos 2 itens',
+        saoOpcoesValidas,
       },
     },
     resposta_correta: {

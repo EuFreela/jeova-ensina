@@ -2,10 +2,16 @@ import { createContext, useCallback, useContext, useMemo, useState } from 'react
 
 const GameContext = createContext(null);
 
+/** Vidas iniciais e tempo padrao, conforme script.md. */
+export const VIDAS_INICIAIS = 3;
+export const TEMPO_PADRAO = 30;
+
 const ESTADO_INICIAL = {
   total: 10,
   categoria: 'todas',
   dificuldade: 'todas',
+  tempoPorQuestao: TEMPO_PADRAO, // 0 desliga o cronometro
+  vidas: VIDAS_INICIAIS,
   origem: null,
   partidaId: 0,
   ultimoResultado: null,
@@ -25,6 +31,8 @@ export function GameProvider({ children }) {
       total: opcoes.total ?? 10,
       categoria: opcoes.categoria ?? 'todas',
       dificuldade: opcoes.dificuldade ?? 'todas',
+      tempoPorQuestao: opcoes.tempoPorQuestao ?? TEMPO_PADRAO,
+      vidas: opcoes.vidas ?? VIDAS_INICIAIS,
       origem: opcoes.origem ?? null,
       partidaId: anterior.partidaId + 1,
     }));
@@ -40,8 +48,10 @@ export function GameProvider({ children }) {
   }, []);
 
   const reiniciar = useCallback(() => {
+    setConfig((anterior) => ({ ...ESTADO_INICIAL, partidaId: anterior.partidaId }));
     setUltimoResultado(null);
     setErroSalvar(null);
+    setSalvando(false);
   }, []);
 
   const valor = useMemo(

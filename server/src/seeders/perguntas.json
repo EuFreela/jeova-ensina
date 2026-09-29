@@ -1,7 +1,12 @@
 [
   {
     "pergunta": "Quantos livros tem a Bíblia completa?",
-    "opcoes": ["66", "27", "39", "12"],
+    "opcoes": [
+      "66",
+      "27",
+      "39",
+      "12"
+    ],
     "resposta_correta": 0,
     "categoria": "livros",
     "dificuldade": "facil",
@@ -9,7 +14,12 @@
   },
   {
     "pergunta": "Qual é o primeiro livro da Bíblia?",
-    "opcoes": ["Êxodo", "Gênesis", "Levítico", "Números"],
+    "opcoes": [
+      "Êxodo",
+      "Gênesis",
+      "Levítico",
+      "Números"
+    ],
     "resposta_correta": 1,
     "categoria": "livros",
     "dificuldade": "facil",
@@ -17,7 +27,12 @@
   },
   {
     "pergunta": "Em quantos dias Deus criou o mundo?",
-    "opcoes": ["7", "3", "6", "40"],
+    "opcoes": [
+      "7",
+      "3",
+      "6",
+      "40"
+    ],
     "resposta_correta": 2,
     "categoria": "historia",
     "dificuldade": "facil",
@@ -25,7 +40,12 @@
   },
   {
     "pergunta": "Quem foi o primeiro ser humano criado por Deus?",
-    "opcoes": ["Eva", "Caim", "Adão", "Abel"],
+    "opcoes": [
+      "Eva",
+      "Caim",
+      "Adão",
+      "Abel"
+    ],
     "resposta_correta": 2,
     "categoria": "personagens",
     "dificuldade": "facil",
@@ -33,7 +53,12 @@
   },
   {
     "pergunta": "Qual animal induziu Adão e Eva a comer do fruto proibido?",
-    "opcoes": ["Camelo", "Coelho", "Elefante", "Serpente"],
+    "opcoes": [
+      "Camelo",
+      "Coelho",
+      "Elefante",
+      "Serpente"
+    ],
     "resposta_correta": 3,
     "categoria": "historia",
     "dificuldade": "facil",
@@ -41,7 +66,12 @@
   },
   {
     "pergunta": "Quem construiu a arca para salvar sua família do dilúvio?",
-    "opcoes": ["Moisés", "Davi", "Noé", "Abraão"],
+    "opcoes": [
+      "Moisés",
+      "Davi",
+      "Noé",
+      "Abraão"
+    ],
     "resposta_correta": 2,
     "categoria": "personagens",
     "dificuldade": "facil",
@@ -49,7 +79,12 @@
   },
   {
     "pergunta": "Quem foi o irmão de Caim?",
-    "opcoes": ["Abel", "Jó", "Set", "Noé"],
+    "opcoes": [
+      "Abel",
+      "Jó",
+      "Set",
+      "Noé"
+    ],
     "resposta_correta": 0,
     "categoria": "personagens",
     "dificuldade": "facil",
@@ -57,7 +92,12 @@
   },
   {
     "pergunta": "Quem foi o primeiro rei de Israel?",
-    "opcoes": ["Davi", "Salomão", "Samuel", "Saul"],
+    "opcoes": [
+      "Davi",
+      "Salomão",
+      "Samuel",
+      "Saul"
+    ],
     "resposta_correta": 3,
     "categoria": "personagens",
     "dificuldade": "facil",
@@ -65,7 +105,12 @@
   },
   {
     "pergunta": "Qual era a cidade natal do rei Davi?",
-    "opcoes": ["Hebron", "Betsabé", "Belém", "Jerusalém"],
+    "opcoes": [
+      "Hebron",
+      "Betsabé",
+      "Belém",
+      "Jerusalém"
+    ],
     "resposta_correta": 2,
     "categoria": "personagens",
     "dificuldade": "facil",
@@ -73,7 +118,12 @@
   },
   {
     "pergunta": "Quem foi o rei sábio que governou Israel e construiu o primeiro templo?",
-    "opcoes": ["Davi", "Ezequias", "Salomão", "Josias"],
+    "opcoes": [
+      "Davi",
+      "Ezequias",
+      "Salomão",
+      "Josias"
+    ],
     "resposta_correta": 2,
     "categoria": "personagens",
     "dificuldade": "facil",
@@ -81,7 +131,12 @@
   },
   {
     "pergunta": "Qual livro do Antigo Testamento tem apenas um capítulo?",
-    "opcoes": ["Habacuque", "Obadias", "Sofonias", "Ageu"],
+    "opcoes": [
+      "Habacuque",
+      "Obadias",
+      "Sofonias",
+      "Ageu"
+    ],
     "resposta_correta": 1,
     "categoria": "livros",
     "dificuldade": "facil",
@@ -89,7 +144,12 @@
   },
   {
     "pergunta": "Quem escreveu o livro do Apocalipse?",
-    "opcoes": ["Pedro", "João", "Paulo", "Tiago"],
+    "opcoes": [
+      "Pedro",
+      "João",
+      "Paulo",
+      "Tiago"
+    ],
     "resposta_correta": 1,
     "categoria": "livros",
     "dificuldade": "facil",
@@ -97,7 +157,12 @@
   },
   {
     "pergunta": "Qual é o último livro do Novo Testamento?",
-    "opcoes": ["Apocalipse", "Atos", "Romanos", "Hebreus"],
+    "opcoes": [
+      "Apocalipse",
+      "Atos",
+      "Romanos",
+      "Hebreus"
+    ],
     "resposta_correta": 0,
     "categoria": "livros",
     "dificuldade": "facil",
@@ -105,7 +170,12 @@
   },
   {
     "pergunta": "Quantos capítulos tem o livro de Salmos?",
-    "opcoes": ["120", "200", "150", "100"],
+    "opcoes": [
+      "120",
+      "200",
+      "150",
+      "100"
+    ],
     "resposta_correta": 2,
     "categoria": "livros",
     "dificuldade": "facil",
@@ -113,7 +183,12 @@
   },
   {
     "pergunta": "Quantos capítulos tem o livro de Provérbios?",
-    "opcoes": ["24", "35", "31", "20"],
+    "opcoes": [
+      "24",
+      "35",
+      "31",
+      "20"
+    ],
     "resposta_correta": 2,
     "categoria": "livros",
     "dificuldade": "facil",
@@ -121,7 +196,12 @@
   },
   {
     "pergunta": "Qual é o primeiro livro do Novo Testamento?",
-    "opcoes": ["Marcos", "Lucas", "Mateus", "João"],
+    "opcoes": [
+      "Marcos",
+      "Lucas",
+      "Mateus",
+      "João"
+    ],
     "resposta_correta": 2,
     "categoria": "evangelhos",
     "dificuldade": "facil",
@@ -129,7 +209,12 @@
   },
   {
     "pergunta": "Quantos livros tem o Antigo Testamento?",
-    "opcoes": ["27", "39", "24", "66"],
+    "opcoes": [
+      "27",
+      "39",
+      "24",
+      "66"
+    ],
     "resposta_correta": 1,
     "categoria": "livros",
     "dificuldade": "facil",
@@ -137,7 +222,12 @@
   },
   {
     "pergunta": "Quantos mandamentos Deus entregou a Moisés no Monte Sinai?",
-    "opcoes": ["5", "10", "12", "3"],
+    "opcoes": [
+      "5",
+      "10",
+      "12",
+      "3"
+    ],
     "resposta_correta": 1,
     "categoria": "mandamentos",
     "dificuldade": "facil",
@@ -145,7 +235,12 @@
   },
   {
     "pergunta": "Qual é o primeiro mandamento?",
-    "opcoes": ["Não roubarás", "Honra teu pai e tua mãe", "Não matarás", "Não terás outros deuses diante de mim"],
+    "opcoes": [
+      "Não roubarás",
+      "Honra teu pai e tua mãe",
+      "Não matarás",
+      "Não terás outros deuses diante de mim"
+    ],
     "resposta_correta": 3,
     "categoria": "mandamentos",
     "dificuldade": "facil",
@@ -166,7 +261,12 @@
   },
   {
     "pergunta": "Onde Jesus nasceu?",
-    "opcoes": ["Nazaré", "Jerusalém", "Belém", "Cafarnaum"],
+    "opcoes": [
+      "Nazaré",
+      "Jerusalém",
+      "Belém",
+      "Cafarnaum"
+    ],
     "resposta_correta": 2,
     "categoria": "geografia",
     "dificuldade": "facil",
@@ -174,7 +274,12 @@
   },
   {
     "pergunta": "Em que cidade Jesus foi crucificado?",
-    "opcoes": ["Jerusalém", "Nazaré", "Belém", "Cafarnaum"],
+    "opcoes": [
+      "Jerusalém",
+      "Nazaré",
+      "Belém",
+      "Cafarnaum"
+    ],
     "resposta_correta": 0,
     "categoria": "geografia",
     "dificuldade": "facil",
@@ -182,7 +287,12 @@
   },
   {
     "pergunta": "Em que rio Jesus foi batizado?",
-    "opcoes": ["Rio Gebor", "Rio Nilo", "Rio Tâmis", "Rio Jordão"],
+    "opcoes": [
+      "Rio Gebor",
+      "Rio Nilo",
+      "Rio Tâmis",
+      "Rio Jordão"
+    ],
     "resposta_correta": 3,
     "categoria": "geografia",
     "dificuldade": "facil",
@@ -190,7 +300,12 @@
   },
   {
     "pergunta": "Em que cidade Jesus ressuscitou Lázaro?",
-    "opcoes": ["Betânia", "Cafarnaum", "Betsaída", "Naim"],
+    "opcoes": [
+      "Betânia",
+      "Cafarnaum",
+      "Betsaída",
+      "Naim"
+    ],
     "resposta_correta": 0,
     "categoria": "geografia",
     "dificuldade": "facil",
@@ -198,7 +313,12 @@
   },
   {
     "pergunta": "Quantos discípulos Jesus escolheu?",
-    "opcoes": ["10", "12", "7", "40"],
+    "opcoes": [
+      "10",
+      "12",
+      "7",
+      "40"
+    ],
     "resposta_correta": 1,
     "categoria": "evangelhos",
     "dificuldade": "facil",
@@ -206,7 +326,12 @@
   },
   {
     "pergunta": "Quem foi o pai terreno de Jesus?",
-    "opcoes": ["João Batista", "Zacarias", "José", "Davi"],
+    "opcoes": [
+      "João Batista",
+      "Zacarias",
+      "José",
+      "Davi"
+    ],
     "resposta_correta": 2,
     "categoria": "personagens",
     "dificuldade": "facil",
@@ -214,7 +339,12 @@
   },
   {
     "pergunta": "Quem batizou Jesus no rio Jordão?",
-    "opcoes": ["Pedro", "João Batista", "André", "Tiago"],
+    "opcoes": [
+      "Pedro",
+      "João Batista",
+      "André",
+      "Tiago"
+    ],
     "resposta_correta": 1,
     "categoria": "personagens",
     "dificuldade": "facil",
@@ -222,7 +352,12 @@
   },
   {
     "pergunta": "Quem foi engolido por um grande peixe e depois pregou em Nínive?",
-    "opcoes": ["Ezequiel", "Jonas", "Daniel", "Isaías"],
+    "opcoes": [
+      "Ezequiel",
+      "Jonas",
+      "Daniel",
+      "Isaías"
+    ],
     "resposta_correta": 1,
     "categoria": "personagens",
     "dificuldade": "facil",
@@ -230,7 +365,12 @@
   },
   {
     "pergunta": "Que povo Deus tirou do Egito para uma terra prometida?",
-    "opcoes": ["Os cananeus", "Os hebreus", "Os filisteus", "Os amalequitas"],
+    "opcoes": [
+      "Os cananeus",
+      "Os israelitas (filhos de Israel)",
+      "Os filisteus",
+      "Os amalequitas"
+    ],
     "resposta_correta": 1,
     "categoria": "historia",
     "dificuldade": "facil",
@@ -238,7 +378,12 @@
   },
   {
     "pergunta": "Como Jesus andava sobre a água?",
-    "opcoes": ["Nadando", "Caminhando", "De barco", "Voando"],
+    "opcoes": [
+      "Nadando",
+      "Caminhando",
+      "De barco",
+      "Voando"
+    ],
     "resposta_correta": 1,
     "categoria": "milagres",
     "dificuldade": "facil",
@@ -259,7 +404,12 @@
   },
   {
     "pergunta": "O que significa o nome 'Emanuel'?",
-    "opcoes": ["Deus é amor", "Caminho e verdade", "Deus conosco", "Senhor forte"],
+    "opcoes": [
+      "Deus é amor",
+      "Caminho e verdade",
+      "Deus conosco",
+      "Senhor forte"
+    ],
     "resposta_correta": 2,
     "categoria": "teologia",
     "dificuldade": "facil",
@@ -280,7 +430,12 @@
   },
   {
     "pergunta": "Segundo João 1:1, no princípio o Verbo estava com:",
-    "opcoes": ["Abraão", "Moisés", "Davi", "Deus"],
+    "opcoes": [
+      "Abraão",
+      "Moisés",
+      "Davi",
+      "Deus"
+    ],
     "resposta_correta": 3,
     "categoria": "teologia",
     "dificuldade": "facil",
@@ -288,7 +443,12 @@
   },
   {
     "pergunta": "A expressão 'Eu sou o Pão da Vida' aparece em qual Evangelho?",
-    "opcoes": ["João", "Mateus", "Marcos", "Lucas"],
+    "opcoes": [
+      "João",
+      "Mateus",
+      "Marcos",
+      "Lucas"
+    ],
     "resposta_correta": 0,
     "categoria": "evangelhos",
     "dificuldade": "facil",
@@ -298,7 +458,7 @@
     "pergunta": "O que Jesus fez na última ceia antes de morrer?",
     "opcoes": [
       "Construiu uma nova tenda",
-      "Partiu o pão e tomou o cálice",
+      "Partiu o pão e tomou o cálice, instituindo a Meal Memorial (comemoração)",
       "Chamou os discípulos para pescar",
       "Lavou o chão da sala"
     ],
@@ -313,7 +473,7 @@
       "Esperem aqui três dias",
       "Vão comprar perfumes",
       "Não contem a ninguém",
-      "Ele ressuscitou e vos precederá"
+      "Não está aqui: foi ressuscitado e vos precederá até a Galiléia"
     ],
     "resposta_correta": 3,
     "categoria": "evangelhos",
@@ -322,7 +482,12 @@
   },
   {
     "pergunta": "Quantas vezes Jesus orou na Getsêmani antes de ser preso?",
-    "opcoes": ["Uma", "Três", "Sete", "Doze"],
+    "opcoes": [
+      "Uma",
+      "Três",
+      "Sete",
+      "Doze"
+    ],
     "resposta_correta": 1,
     "categoria": "evangelhos",
     "dificuldade": "facil",
@@ -330,7 +495,12 @@
   },
   {
     "pergunta": "Quantos dias e noites Jesus jejuou no deserto?",
-    "opcoes": ["30", "12", "7", "40"],
+    "opcoes": [
+      "30",
+      "12",
+      "7",
+      "40"
+    ],
     "resposta_correta": 3,
     "categoria": "evangelhos",
     "dificuldade": "facil",
@@ -351,7 +521,12 @@
   },
   {
     "pergunta": "Segundo Provérbios 18:21, a vida e a morte estão no poder da:",
-    "opcoes": ["mão", "língua", "mente", "força"],
+    "opcoes": [
+      "mão",
+      "língua",
+      "mente",
+      "força"
+    ],
     "resposta_correta": 1,
     "categoria": "sabedoria",
     "dificuldade": "facil",
@@ -372,7 +547,12 @@
   },
   {
     "pergunta": "Qual é o nome do filho de Abraão com Sara?",
-    "opcoes": ["Ismael", "Esaú", "Isaque", "Jacó"],
+    "opcoes": [
+      "Ismael",
+      "Esaú",
+      "Isaque",
+      "Jacó"
+    ],
     "resposta_correta": 2,
     "categoria": "personagens",
     "dificuldade": "medio",
@@ -380,7 +560,12 @@
   },
   {
     "pergunta": "Quantas pessoas foram salvas na arca de Noé?",
-    "opcoes": ["2", "12", "8", "4"],
+    "opcoes": [
+      "2",
+      "12",
+      "8",
+      "4"
+    ],
     "resposta_correta": 2,
     "categoria": "historia",
     "dificuldade": "medio",
@@ -388,7 +573,12 @@
   },
   {
     "pergunta": "Por quantos anos Davi reinou ao todo, somando Hebron e Jerusalém?",
-    "opcoes": ["30 anos", "40 anos", "33 anos", "7 anos"],
+    "opcoes": [
+      "30 anos",
+      "40 anos",
+      "33 anos",
+      "7 anos"
+    ],
     "resposta_correta": 1,
     "categoria": "personagens",
     "dificuldade": "medio",
@@ -396,31 +586,51 @@
   },
   {
     "pergunta": "Quem escreveu o livro de Lamentações?",
-    "opcoes": ["Isaías", "Jeremias", "Ezequiel", "Daniel"],
+    "opcoes": [
+      "Isaías",
+      "Jeremias",
+      "Ezequiel",
+      "Daniel"
+    ],
     "resposta_correta": 1,
     "categoria": "profetas",
     "dificuldade": "medio",
-    "referencia": "Lamentações 5:18"
+    "referencia": "Jeremias 36; Lamentações 1-5"
   },
   {
     "pergunta": "Qual é o último livro dos profetas do Antigo Testamento?",
-    "opcoes": ["Ageu", "Habacuque", "Malaquias", "Sofonias"],
+    "opcoes": [
+      "Ageu",
+      "Habacuque",
+      "Malaquias",
+      "Sofonias"
+    ],
     "resposta_correta": 2,
     "categoria": "profetas",
     "dificuldade": "medio",
     "referencia": "Malaquias 4"
   },
   {
-    "pergunta": "Qual profeta é chamado de 'Príncipe dos Profetas'?",
-    "opcoes": ["Jeremias", "Isaías", "Ezequiel", "Daniel"],
+    "pergunta": "Qual profeta é chamado de 'Príncipe dos Profetas' (título tradicional, não declarado na Bíblia)?",
+    "opcoes": [
+      "Jeremias",
+      "Isaías",
+      "Ezequiel",
+      "Daniel"
+    ],
     "resposta_correta": 1,
     "categoria": "profetas",
     "dificuldade": "medio",
-    "referencia": "Isaías 6:1-8"
+    "referencia": "Isaías 6:1-8 (título da tradição judaica)"
   },
   {
     "pergunta": "Qual profeta foi levado ao céu em um redemoinho de fogo?",
-    "opcoes": ["Enoque", "Elias", "Ezequiel", "Daniel"],
+    "opcoes": [
+      "Enoque",
+      "Elias",
+      "Ezequiel",
+      "Daniel"
+    ],
     "resposta_correta": 1,
     "categoria": "profetas",
     "dificuldade": "medio",
@@ -441,7 +651,12 @@
   },
   {
     "pergunta": "Qual rei de Israel se humilhou, restaurou o templo e leu a Lei para o povo?",
-    "opcoes": ["Ezequias", "Davi", "Josias", "Acaz"],
+    "opcoes": [
+      "Ezequias",
+      "Davi",
+      "Josias",
+      "Acaz"
+    ],
     "resposta_correta": 2,
     "categoria": "personagens",
     "dificuldade": "medio",
@@ -449,7 +664,12 @@
   },
   {
     "pergunta": "Segundo o livro de Números, quantos espias foram enviados à Terra de Canaã?",
-    "opcoes": ["10", "12", "2", "40"],
+    "opcoes": [
+      "10",
+      "12",
+      "2",
+      "40"
+    ],
     "resposta_correta": 1,
     "categoria": "historia",
     "dificuldade": "medio",
@@ -457,18 +677,23 @@
   },
   {
     "pergunta": "Segundo Josué, o sol parou de se mover para que Israel vencesse:",
-    "opcoes": ["os cananeus", "os amalequitas", "os filisteus", "os midianos"],
+    "opcoes": [
+      "Os cananeus",
+      "Os amorreus",
+      "Os filisteus",
+      "Os midianos"
+    ],
     "resposta_correta": 1,
     "categoria": "historia",
     "dificuldade": "medio",
-    "referencia": "Josué 10:12-13"
+    "referencia": "Josué 10:6, 12-13"
   },
   {
     "pergunta": "Que história dá origem à parábola do Filho Pródigo?",
     "opcoes": [
       "Um filho que sai de casa e depois retorna",
       "Um servo servido injustiçadamente",
-      "Dois irmãos que brigam pela herança",
+      "Um servo que foge de seu senhor",
       "Um rei que perde o trono"
     ],
     "resposta_correta": 0,
@@ -478,7 +703,12 @@
   },
   {
     "pergunta": "Na parábola do Bom Samaritano, quem se recusou a ajudar o homem ferido?",
-    "opcoes": ["O samaritano",       "O sacerdote e o levita", "O roubado", "O Mestre"],
+    "opcoes": [
+      "O samaritano",
+      "O sacerdote e o levita",
+      "O roubado",
+      "O Mestre"
+    ],
     "resposta_correta": 1,
     "categoria": "parabolas",
     "dificuldade": "medio",
@@ -488,7 +718,7 @@
     "pergunta": "Segundo Provérbios 11:14, o que salva a cidade quando não há conselho?",
     "opcoes": [
       "A força das muralhas",
-      "O conselho de muitos",
+      "A multidão de conselhos",
       "A riqueza do rei",
       "O número de soldados"
     ],
@@ -511,8 +741,13 @@
     "referencia": "Eclesiastes 3:1"
   },
   {
-    "pergunta": "Qual livro do Novo Testamento é chamado de 'o Evangelho da Caridade'?",
-    "opcoes": ["Tiago", "1 Pedro", "Judas", "1 João"],
+    "pergunta": "Em qual livro do Novo Testamento lemos que 'Deus é amor'?",
+    "opcoes": [
+      "Tiago",
+      "1 Pedro",
+      "Judas",
+      "1 João"
+    ],
     "resposta_correta": 3,
     "categoria": "livros",
     "dificuldade": "medio",
@@ -520,11 +755,16 @@
   },
   {
     "pergunta": "Quem escreveu a carta mais longa do Novo Testamento?",
-    "opcoes": ["Pedro", "Paulo", "Tiago", "João"],
+    "opcoes": [
+      "Pedro",
+      "Paulo",
+      "Tiago",
+      "João"
+    ],
     "resposta_correta": 1,
     "categoria": "livros",
     "dificuldade": "medio",
-    "referencia": "Romanos 1:1"
+    "referencia": "Romanos 1-16"
   },
   {
     "pergunta": "Para que serviu o dinheiro que Judas devolveu?",
@@ -567,7 +807,12 @@
   },
   {
     "pergunta": "Em que cidade Jesus leu no sábado e disse 'isto se cumpre hoje em vós'?",
-    "opcoes": ["Nazaré", "Jerusalém", "Belém", "Cafarnaum"],
+    "opcoes": [
+      "Nazaré",
+      "Jerusalém",
+      "Belém",
+      "Cafarnaum"
+    ],
     "resposta_correta": 0,
     "categoria": "evangelhos",
     "dificuldade": "medio",
@@ -575,7 +820,12 @@
   },
   {
     "pergunta": "Segundo o Evangelho de João, Jesus disse 'Eu sou a videira verdadeira' em:",
-    "opcoes": ["João 14", "João 15", "João 13", "João 17"],
+    "opcoes": [
+      "João 14",
+      "João 15",
+      "João 13",
+      "João 17"
+    ],
     "resposta_correta": 1,
     "categoria": "evangelhos",
     "dificuldade": "medio",
@@ -583,7 +833,12 @@
   },
   {
     "pergunta": "Onde Jesus fez seu primeiro milagre, segundo o Evangelho de João?",
-    "opcoes": ["Cafarnaum", "Cana", "Betânia", "Nazaré"],
+    "opcoes": [
+      "Cafarnaum",
+      "Cana",
+      "Betânia",
+      "Nazaré"
+    ],
     "resposta_correta": 1,
     "categoria": "milagres",
     "dificuldade": "medio",
@@ -591,7 +846,12 @@
   },
   {
     "pergunta": "Segundo Daniel 6, Daniel foi jogado em qual local?",
-    "opcoes": ["A cova dos leões", "O fogo", "A lama", "O mar"],
+    "opcoes": [
+      "A cova dos leões",
+      "O fogo",
+      "A lama",
+      "O mar"
+    ],
     "resposta_correta": 0,
     "categoria": "personagens",
     "dificuldade": "medio",
@@ -613,7 +873,7 @@
   {
     "pergunta": "O que Paulo escreveu sobre o amor em 1 Coríntios 13:13?",
     "opcoes": [
-      "O amor é o maior de todos",
+      "O amor é o maior dos três: fé, esperança e amor",
       "O amor é o primeiro de todos",
       "O amor é o mais difícil",
       "O amor é o mais antigo"
@@ -625,23 +885,38 @@
   },
   {
     "pergunta": "Quantos anos Saul tinha quando se tornou rei de Israel?",
-    "opcoes": ["25 anos", "30 anos", "40 anos", "50 anos"],
+    "opcoes": [
+      "25 anos",
+      "30 anos",
+      "40 anos",
+      "50 anos"
+    ],
     "resposta_correta": 2,
     "categoria": "personagens",
     "dificuldade": "dificil",
-    "referencia": "1 Samuel 13:1"
+    "referencia": "1 Samuel 9:2, 10:1, 24"
   },
   {
-    "pergunta": "Quantas vezes Jesus orou ao Pai no Sermão da Montanha usando a expressão 'assim seja'?",
-    "opcoes": ["3 vezes", "1 vez", "7 vezes", "12 vezes"],
+    "pergunta": "Segundo João 6, que alimento Jesus apresenta como essencial para obter a vida eterna?",
+    "opcoes": [
+      "O pão da vida",
+      "O maná do deserto",
+      "As ofertas do templo",
+      "A fruta da árvore da vida"
+    ],
     "resposta_correta": 0,
     "categoria": "evangelhos",
     "dificuldade": "dificil",
-    "referencia": "Mateus 6:9-13"
+    "referencia": "João 6:27-58"
   },
   {
-    "pergunta": "Em que lugar Jesus se transfigurou diante dos discípulos?",
-    "opcoes": ["No Golgota", "No monte Tabor", "No Carmelo", "No monte Sinai"],
+    "pergunta": "Segundo a tradição, em que monte Jesus se transfigurou diante dos discípulos? (a montanha não é nomeada na Bíblia)",
+    "opcoes": [
+      "No Golgota",
+      "No monte Tabor",
+      "No Carmelo",
+      "No monte Sinai"
+    ],
     "resposta_correta": 1,
     "categoria": "evangelhos",
     "dificuldade": "dificil",
@@ -649,7 +924,12 @@
   },
   {
     "pergunta": "Quem é chamado de 'amigo de Deus' no livro de Tiago?",
-    "opcoes": ["Noé", "Abraão", "Moisés", "Davi"],
+    "opcoes": [
+      "Noé",
+      "Abraão",
+      "Moisés",
+      "Davi"
+    ],
     "resposta_correta": 1,
     "categoria": "teologia",
     "dificuldade": "dificil",
@@ -657,19 +937,29 @@
   },
   {
     "pergunta": "Em qual capítulo de João Jesus diz 'Eu sou a ressurreição e a vida'?",
-    "opcoes": ["João 3", "João 11", "João 6", "João 14"],
+    "opcoes": [
+      "João 3",
+      "João 11",
+      "João 6",
+      "João 14"
+    ],
     "resposta_correta": 1,
     "categoria": "evangelhos",
     "dificuldade": "dificil",
     "referencia": "João 11:25-26"
   },
   {
-    "pergunta": "Qual Ezequiel é chamado de 'a videira verdadeira'?",
-    "opcoes": ["Ezequiel 15", "Ezequiel 1", "Ezequiel 18", "Ezequiel 33"],
+    "pergunta": "Segundo Ezequiel 15, o que o profeta diz que acontecerá com a videira que não dá bons frutos?",
+    "opcoes": [
+      "Ela será entregue ao fogo e não dará fruto",
+      "Ela será levada ao templo de Jerusalém",
+      "Ela será multiplicada no Egito",
+      "Ela se tornará a videira do rei"
+    ],
     "resposta_correta": 0,
     "categoria": "profetas",
     "dificuldade": "dificil",
-    "referencia": "Ezequiel 15:1-8"
+    "referencia": "Ezequiel 15:4-8"
   },
   {
     "pergunta": "O que Jesus quis dizer em João 14:15, 'se me amardes, guardareis os meus mandamentos'?",
@@ -699,7 +989,12 @@
   },
   {
     "pergunta": "Segundo Atos, em que cidade os discípulos ficaram reunidos no dia de Pentecostes?",
-    "opcoes": ["Antioquia", "Jerusalém", "Damasco", "Éfeso"],
+    "opcoes": [
+      "Antioquia",
+      "Jerusalém",
+      "Damasco",
+      "Éfeso"
+    ],
     "resposta_correta": 1,
     "categoria": "historia",
     "dificuldade": "dificil",
@@ -719,17 +1014,17 @@
     "referencia": "Apocalipse 21:1-5"
   },
   {
-    "pergunta": "Segundo Hebreus 11, por quem a fé de Abraão foi considerada como righteousness?",
+    "pergunta": "Segundo Gênesis 15:6, o que fez a fé de Abraão ser contada como justiça?",
     "opcoes": [
-      "Pelas obras que praticou",
-      "Pela ordem recebida de Deus",
-      "Pela linhagem de seu pai",
-      "Pelas ofertas do templo"
+      "Ele acreditou em Jeová",
+      "As obras que praticou",
+      "A linhagem de seu pai",
+      "As ofertas do templo"
     ],
-    "resposta_correta": 1,
+    "resposta_correta": 0,
     "categoria": "teologia",
     "dificuldade": "dificil",
-    "referencia": "Hebreus 11:1-8; Gênesis 15:6"
+    "referencia": "Gênesis 15:6; Romanos 4:3-5; Hebreus 11:1-8"
   },
   {
     "pergunta": "O que Jesus diz em João 8:12 sobre a si mesmo?",

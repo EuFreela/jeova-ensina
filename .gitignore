@@ -9,6 +9,13 @@ build/
 .env
 .env.local
 .env.*.local
+# Mantidos os .env.example: sao modelos sem credenciais.
+
+# Backups locais (padrao usado pelos scripts de revisao)
+*.bak
+*.bak-*
+*.orig
+*~
 
 # Database
 *.sqlite

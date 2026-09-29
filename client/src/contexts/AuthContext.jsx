@@ -50,14 +50,28 @@ export function AuthProvider({ children }) {
     [aplicarSessao]
   );
 
-  const cadastro = useCallback(
-    async (username, password, confirmPassword) => {
-      const { data } = await api.post('/auth/register', { username, password, confirmPassword });
-      aplicarSessao(data);
-      return data.user;
-    },
-    [aplicarSessao]
-  );
+  const alterarSenha = useCallback(async (senhaAtual, novaSenha) => {
+    const { data } = await api.post('/auth/change-password', { senhaAtual, novaSenha });
+    if (data.token) tokenStore.set(data.token);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
+  // O jogador decide se o ranking solo dele fica visivel para os outros.
+  // O retorno otimista deixa o botao responder na hora, e a resposta do
+  // servidor desfaz caso algo tenha sido barrado.
+  const definirRankingPublico = useCallback(async (novoValor) => {
+    const anterior = user;
+    setUser((atual) => (atual ? { ...atual, ranking_publico: novoValor } : atual));
+    try {
+      const { data } = await api.put('/auth/ranking-visibilidade', { publico: novoValor });
+      setUser(data.usuario);
+      return data.usuario;
+    } catch (error) {
+      setUser(anterior);
+      throw new Error(extrairErro(error, 'Não foi possível alterar a visibilidade.'));
+    }
+  }, [user]);
 
   const atualizarPerfil = useCallback(async () => {
     try {
@@ -70,8 +84,26 @@ export function AuthProvider({ children }) {
   }, []);
 
   const valor = useMemo(
-    () => ({ user, carregando, autenticado: Boolean(user), login, cadastro, logout, atualizarPerfil }),
-    [user, carregando, login, cadastro, logout, atualizarPerfil]
+    () => ({
+      user,
+      carregando,
+      autenticado: Boolean(user),
+      isAdmin: user?.role === 'admin',
+      login,
+      logout,
+      alterarSenha,
+      definirRankingPublico,
+      atualizarPerfil,
+    }),
+    [
+      user,
+      carregando,
+      login,
+      logout,
+      alterarSenha,
+      definirRankingPublico,
+      atualizarPerfil,
+    ]
   );
 
   return <AuthContext.Provider value={valor}>{children}</AuthContext.Provider>;

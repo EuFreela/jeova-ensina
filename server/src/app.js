@@ -3,26 +3,22 @@ const cors = require('cors');
 require('dotenv').config();
 
 const authRoutes = require('./routes/authRoutes');
+const adminRoutes = require('./routes/adminRoutes');
 const perguntaRoutes = require('./routes/perguntaRoutes');
 const pontuacaoRoutes = require('./routes/pontuacaoRoutes');
 const { notFound, errorHandler } = require('./middlewares/erroMiddleware');
 const { geralLimiter } = require('./middlewares/rateLimitMiddleware');
+const { origemLiberada } = require('./config/origens');
 
 const app = express();
-
-const origensPermitidas = (process.env.CLIENT_URL || 'http://localhost:5173')
-  .split(',')
-  .map((o) => o.trim())
-  .filter(Boolean);
 
 app.use(
   cors({
     origin(origin, callback) {
-      if (!origin) return callback(null, true);
-      if (origensPermitidas.includes('*') || origensPermitidas.includes(origin)) {
-        return callback(null, true);
+      if (!origemLiberada(origin)) {
+        return callback(new Error('Origem não permitida pelo CORS'));
       }
-      return callback(new Error('Origem não permitida pelo CORS'));
+      return callback(null, true);
     },
   })
 );
@@ -35,6 +31,7 @@ app.get('/api/health', (req, res) => {
 });
 
 app.use('/api/auth', authRoutes);
+app.use('/api/admin', adminRoutes);
 app.use('/api/perguntas', perguntaRoutes);
 app.use('/api/pontuacoes', pontuacaoRoutes);
 

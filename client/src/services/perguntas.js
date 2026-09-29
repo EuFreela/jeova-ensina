@@ -104,7 +104,7 @@ export async function buscarPerguntas({ limite = 10, categoria, dificuldade } = 
     if (dificuldade && dificuldade !== 'todas') {
       filtradas = filtradas.filter((p) => p.dificuldade === dificuldade);
     }
-    const finitas = filtradas.length ? filtradas : locais;
+    const finita = filtradas.length ? filtradas : locais;
     return { perguntas: preparar(finita).slice(0, limite), origem: 'local' };
   }
 }
@@ -118,17 +118,38 @@ export async function buscarCategorias() {
   }
 }
 
-export async function salvarPontuacao(respostas) {
-  const { data } = await api.post('/pontuacoes', { respostas });
+/**
+ * Confirma se uma categoria tem perguntas antes de liberar o inicio da partida.
+ * Retorna null quando nao foi possivel verificar (offline): nesse caso o
+ * inicio nao e bloqueado, pois /quiz ainda tem o fallback local.
+ */
+export async function verificarCategoria(categoria) {
+  if (!categoria || categoria === 'todas') return true;
+
+  try {
+    const { data } = await api.get('/perguntas', { params: { limite: 1, categoria } });
+    return Array.isArray(data.perguntas) && data.perguntas.length > 0;
+  } catch {
+    return null;
+  }
+}
+
+export async function salvarPontuacao(respostas, modo = 'solo') {
+  const { data } = await api.post('/pontuacoes', { respostas, modo });
   return data;
 }
 
-export async function buscarRanking() {
-  const { data } = await api.get('/pontuacoes/ranking');
+/**
+ * Ranking separado por modo: 'solo' (jogo individual) e 'campeonato'
+ * (disputa com outras pessoas). Sao listas distintas porque a pontuacao
+ * de um campeonato so vale na comparacao com quem jogou junto.
+ */
+export async function buscarRanking(modo = 'solo') {
+  const { data } = await api.get('/pontuacoes/ranking', { params: { modo } });
   return data;
 }
 
-export async function buscarMinhasPontuacoes() {
-  const { data } = await api.get('/pontuacoes/eu');
+export async function buscarMinhasPontuacoes(modo) {
+  const { data } = await api.get('/pontuacoes/eu', { params: modo ? { modo } : {} });
   return data;
 }

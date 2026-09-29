@@ -367,7 +367,7 @@
     "pergunta": "Que povo Deus tirou do Egito para uma terra prometida?",
     "opcoes": [
       "Os cananeus",
-      "Os hebreus",
+      "Os israelitas (filhos de Israel)",
       "Os filisteus",
       "Os amalequitas"
     ],
@@ -458,7 +458,7 @@
     "pergunta": "O que Jesus fez na última ceia antes de morrer?",
     "opcoes": [
       "Construiu uma nova tenda",
-      "Partiu o pão e tomou o cálice",
+      "Partiu o pão e tomou o cálice, instituindo a Meal Memorial (comemoração)",
       "Chamou os discípulos para pescar",
       "Lavou o chão da sala"
     ],
@@ -473,7 +473,7 @@
       "Esperem aqui três dias",
       "Vão comprar perfumes",
       "Não contem a ninguém",
-      "Ele ressuscitou e vos precederá"
+      "Não está aqui: foi ressuscitado e vos precederá até a Galiléia"
     ],
     "resposta_correta": 3,
     "categoria": "evangelhos",
@@ -595,7 +595,7 @@
     "resposta_correta": 1,
     "categoria": "profetas",
     "dificuldade": "medio",
-    "referencia": "Lamentações 5:18"
+    "referencia": "Jeremias 36; Lamentações 1-5"
   },
   {
     "pergunta": "Qual é o último livro dos profetas do Antigo Testamento?",
@@ -611,7 +611,7 @@
     "referencia": "Malaquias 4"
   },
   {
-    "pergunta": "Qual profeta é chamado de 'Príncipe dos Profetas'?",
+    "pergunta": "Qual profeta é chamado de 'Príncipe dos Profetas' (título tradicional, não declarado na Bíblia)?",
     "opcoes": [
       "Jeremias",
       "Isaías",
@@ -621,7 +621,7 @@
     "resposta_correta": 1,
     "categoria": "profetas",
     "dificuldade": "medio",
-    "referencia": "Isaías 6:1-8"
+    "referencia": "Isaías 6:1-8 (título da tradição judaica)"
   },
   {
     "pergunta": "Qual profeta foi levado ao céu em um redemoinho de fogo?",
@@ -678,22 +678,22 @@
   {
     "pergunta": "Segundo Josué, o sol parou de se mover para que Israel vencesse:",
     "opcoes": [
-      "os cananeus",
-      "os amalequitas",
-      "os filisteus",
-      "os midianos"
+      "Os cananeus",
+      "Os amorreus",
+      "Os filisteus",
+      "Os midianos"
     ],
     "resposta_correta": 1,
     "categoria": "historia",
     "dificuldade": "medio",
-    "referencia": "Josué 10:12-13"
+    "referencia": "Josué 10:6, 12-13"
   },
   {
     "pergunta": "Que história dá origem à parábola do Filho Pródigo?",
     "opcoes": [
       "Um filho que sai de casa e depois retorna",
       "Um servo servido injustiçadamente",
-      "Dois irmãos que brigam pela herança",
+      "Um servo que foge de seu senhor",
       "Um rei que perde o trono"
     ],
     "resposta_correta": 0,
@@ -718,7 +718,7 @@
     "pergunta": "Segundo Provérbios 11:14, o que salva a cidade quando não há conselho?",
     "opcoes": [
       "A força das muralhas",
-      "O conselho de muitos",
+      "A multidão de conselhos",
       "A riqueza do rei",
       "O número de soldados"
     ],
@@ -741,7 +741,7 @@
     "referencia": "Eclesiastes 3:1"
   },
   {
-    "pergunta": "Qual livro do Novo Testamento é chamado de 'o Evangelho da Caridade'?",
+    "pergunta": "Em qual livro do Novo Testamento lemos que 'Deus é amor'?",
     "opcoes": [
       "Tiago",
       "1 Pedro",
@@ -764,7 +764,7 @@
     "resposta_correta": 1,
     "categoria": "livros",
     "dificuldade": "medio",
-    "referencia": "Romanos 1:1"
+    "referencia": "Romanos 1-16"
   },
   {
     "pergunta": "Para que serviu o dinheiro que Judas devolveu?",
@@ -873,7 +873,7 @@
   {
     "pergunta": "O que Paulo escreveu sobre o amor em 1 Coríntios 13:13?",
     "opcoes": [
-      "O amor é o maior de todos",
+      "O amor é o maior dos três: fé, esperança e amor",
       "O amor é o primeiro de todos",
       "O amor é o mais difícil",
       "O amor é o mais antigo"
@@ -894,23 +894,23 @@
     "resposta_correta": 2,
     "categoria": "personagens",
     "dificuldade": "dificil",
-    "referencia": "1 Samuel 13:1"
+    "referencia": "1 Samuel 9:2, 10:1, 24"
   },
   {
-    "pergunta": "Quantas vezes Jesus orou ao Pai no Sermão da Montanha usando a expressão 'assim seja'?",
+    "pergunta": "Segundo João 6, que alimento Jesus apresenta como essencial para obter a vida eterna?",
     "opcoes": [
-      "3 vezes",
-      "1 vez",
-      "7 vezes",
-      "12 vezes"
+      "O pão da vida",
+      "O maná do deserto",
+      "As ofertas do templo",
+      "A fruta da árvore da vida"
     ],
     "resposta_correta": 0,
     "categoria": "evangelhos",
     "dificuldade": "dificil",
-    "referencia": "Mateus 6:9-13"
+    "referencia": "João 6:27-58"
   },
   {
-    "pergunta": "Em que lugar Jesus se transfigurou diante dos discípulos?",
+    "pergunta": "Segundo a tradição, em que monte Jesus se transfigurou diante dos discípulos? (a montanha não é nomeada na Bíblia)",
     "opcoes": [
       "No Golgota",
       "No monte Tabor",
@@ -949,17 +949,17 @@
     "referencia": "João 11:25-26"
   },
   {
-    "pergunta": "Qual Ezequiel é chamado de 'a videira verdadeira'?",
+    "pergunta": "Segundo Ezequiel 15, o que o profeta diz que acontecerá com a videira que não dá bons frutos?",
     "opcoes": [
-      "Ezequiel 15",
-      "Ezequiel 1",
-      "Ezequiel 18",
-      "Ezequiel 33"
+      "Ela será entregue ao fogo e não dará fruto",
+      "Ela será levada ao templo de Jerusalém",
+      "Ela será multiplicada no Egito",
+      "Ela se tornará a videira do rei"
     ],
     "resposta_correta": 0,
     "categoria": "profetas",
     "dificuldade": "dificil",
-    "referencia": "Ezequiel 15:1-8"
+    "referencia": "Ezequiel 15:4-8"
   },
   {
     "pergunta": "O que Jesus quis dizer em João 14:15, 'se me amardes, guardareis os meus mandamentos'?",
@@ -1014,17 +1014,17 @@
     "referencia": "Apocalipse 21:1-5"
   },
   {
-    "pergunta": "Segundo Hebreus 11, por quem a fé de Abraão foi considerada como righteousness?",
+    "pergunta": "Segundo Gênesis 15:6, o que fez a fé de Abraão ser contada como justiça?",
     "opcoes": [
-      "Pelas obras que praticou",
-      "Pela ordem recebida de Deus",
-      "Pela linhagem de seu pai",
-      "Pelas ofertas do templo"
+      "Ele acreditou em Jeová",
+      "As obras que praticou",
+      "A linhagem de seu pai",
+      "As ofertas do templo"
     ],
-    "resposta_correta": 1,
+    "resposta_correta": 0,
     "categoria": "teologia",
     "dificuldade": "dificil",
-    "referencia": "Hebreus 11:1-8; Gênesis 15:6"
+    "referencia": "Gênesis 15:6; Romanos 4:3-5; Hebreus 11:1-8"
   },
   {
     "pergunta": "O que Jesus diz em João 8:12 sobre a si mesmo?",
