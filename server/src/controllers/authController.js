@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
+const { fn, col, literal } = require('sequelize');
 const User = require('../models/User');
+const Pontuacao = require('../models/Pontuacao');
 const { codigoExpirou, VALIDADE_CODIGO_MINUTOS } = require('../utils/codigo');
 
 const MIN_SENHA = 8;
@@ -87,21 +89,74 @@ async function me(req, res) {
     return res.status(401).json({ error: 'Usuário não encontrado' });
   }
 
-  const totalPontos = await user.getPontuacoes({ attributes: ['pontuacao'] });
-  const soma = totalPontos.reduce((acc, p) => acc + p.pontuacao, 0);
-  const recorde = totalPontos.reduce((acc, p) => Math.max(acc, p.pontuacao), 0);
+  // Agregado no banco: antes eram carregadas TODAS as partidas do jogador
+  // para somar em JavaScript. Um jogador com 10 mil jogos gastava 10 mil
+  // linhas de memoria e um round-trip por requisicao so para mostrar dois
+  // numeros na tela.
+  const [totais] = await Pontuacao.findAll({
+    attributes: [
+      [fn('COALESCE', fn('SUM', col('pontuacao')), literal('0')), 'pontosTotais'],
+      [fn('COALESCE', fn('MAX', col('pontuacao')), literal('0')), 'recorde'],
+      [fn('COUNT', col('id')), 'jogos'],
+    ],
+    where: { user_id: user.id },
+    raw: true,
+  });
 
   return res.json({
     user: {
       ...publico(user),
-      recorde,
-      pontosTotais: soma,
+      recorde: Number(totais?.recorde || 0),
+      pontosTotais: Number(totais?.pontosTotais || 0),
+      jogos: Number(totais?.jogos || 0),
     },
   });
 }
 
 /**
  * Troca a senha do proprio usuario autenticado. Limpa a flag de senha
+ * provisoria, permitindo que o acesso inicial seja sempre rotacionado.
+ */
+/**
+ * Troca o nome de usuario do proprio jogador.
+ *
+ * O token carrega `username` dentro do payload (e a presenca em tempo real
+ * mostra esse valor), entao um token emitido antes da troca continuaria
+ * exibindo o nome antigo por ate 7 dias. Por isso a resposta traz um token
+ * novo: o cliente precisa substitui-lo, e devolve-lo aqui deixa isso
+ * explicito em vez de exigir que o cliente adivinhe.
+ */
+async function alterarUsuario(req, res) {
+  const { username } = req.body || {};
+
+  const erro = validarUsername(username);
+  if (erro) {
+    return res.status(400).json({ error: erro });
+  }
+  const novoNome = username.trim();
+
+  const user = await User.findByPk(req.userId);
+  if (!user) {
+    return res.status(401).json({ error: 'Usuário não encontrado' });
+  }
+
+  if (novoNome === user.username) {
+    return res.json({ token: gerarToken(user), user: publico(user) });
+  }
+
+  const emUso = await User.findOne({ where: { username: novoNome }, attributes: ['id'] });
+  if (emUso) {
+    return res.status(409).json({ error: 'Este nome de usuário já está em uso' });
+  }
+
+  user.username = novoNome;
+  await user.save();
+
+  return res.json({ token: gerarToken(user), user: publico(user) });
+}
+
+/**
+ * Troca de senha do proprio usuario autenticado. Limpa a flag de senha
  * provisoria, permitindo que o acesso inicial seja sempre rotacionado.
  */
 async function alterarSenha(req, res) {
@@ -166,6 +221,7 @@ async function definirVisibilidadeRanking(req, res) {
 module.exports = {
   login,
   me,
+  alterarUsuario,
   alterarSenha,
   definirVisibilidadeRanking,
   gerarToken,

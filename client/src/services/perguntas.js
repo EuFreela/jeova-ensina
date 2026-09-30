@@ -2,6 +2,11 @@ import api from './api';
 
 const LOCAL_PERGUNTAS_URL = '/data/perguntas.json';
 
+/**
+ * Ultimo recurso quando nem a API nem o arquivo local respondem. Mantida aqui
+ * para que o /quiz nunca fique sem questão alguma, mesmo em um estado
+ * intermediário (cache quebrado, build parcial).
+ */
 const FALLBACK_LOCAL = [
   {
     id: 'local-1',
@@ -59,6 +64,11 @@ function embaralhar(lista) {
   return arr;
 }
 
+/**
+ * As opções são embaralhadas a cada partida, então o índice exibido ao
+ * jogador deixa de bater com o índice original do banco. A pergunta preparada
+ * já vem com resposta_correta apontando para a nova ordem.
+ */
 function preparar(perguntas) {
   return embaralhar(perguntas).map((p) => {
     const opcoes = p.opcoes.map((texto, indice) => ({ texto, indice }));
@@ -132,24 +142,4 @@ export async function verificarCategoria(categoria) {
   } catch {
     return null;
   }
-}
-
-export async function salvarPontuacao(respostas, modo = 'solo') {
-  const { data } = await api.post('/pontuacoes', { respostas, modo });
-  return data;
-}
-
-/**
- * Ranking separado por modo: 'solo' (jogo individual) e 'campeonato'
- * (disputa com outras pessoas). Sao listas distintas porque a pontuacao
- * de um campeonato so vale na comparacao com quem jogou junto.
- */
-export async function buscarRanking(modo = 'solo') {
-  const { data } = await api.get('/pontuacoes/ranking', { params: { modo } });
-  return data;
-}
-
-export async function buscarMinhasPontuacoes(modo) {
-  const { data } = await api.get('/pontuacoes/eu', { params: modo ? { modo } : {} });
-  return data;
 }

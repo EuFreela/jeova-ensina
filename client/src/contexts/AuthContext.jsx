@@ -57,6 +57,17 @@ export function AuthProvider({ children }) {
     return data.user;
   }, []);
 
+  // O nome de usuario vive dentro do token, entao a troca devolve um token
+  // novo. Guardar esse token e obrigatorio: sem isso, o nome so mudaria na
+  // tela depois de um recarregamento, e a presenca em tempo real mostraria
+  // o antigo ate o token expirar (7 dias).
+  const alterarUsuario = useCallback(async (username) => {
+    const { data } = await api.put('/auth/usuario', { username });
+    if (data.token) tokenStore.set(data.token);
+    setUser(data.user);
+    return data.user;
+  }, []);
+
   // O jogador decide se o ranking solo dele fica visivel para os outros.
   // O retorno otimista deixa o botao responder na hora, e a resposta do
   // servidor desfaz caso algo tenha sido barrado.
@@ -92,6 +103,7 @@ export function AuthProvider({ children }) {
       login,
       logout,
       alterarSenha,
+      alterarUsuario,
       definirRankingPublico,
       atualizarPerfil,
     }),
@@ -101,6 +113,7 @@ export function AuthProvider({ children }) {
       login,
       logout,
       alterarSenha,
+      alterarUsuario,
       definirRankingPublico,
       atualizarPerfil,
     ]

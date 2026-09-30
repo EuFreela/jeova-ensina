@@ -3,7 +3,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import Avatar from './Avatar';
 import BrandLogo from './BrandLogo';
-import { COM_VOLTAR, destinosDe, destinoAtivo, ehRotaDePartida, tituloDe } from './navegacao';
+import { COM_VOLTAR, destinosDe, destinoAtivo, ehRotaDePartida, tituloDe } from '../../constants/navegacao';
 
 export default function AppHeader({ aoVoltar }) {
   const { pathname } = useLocation();

@@ -3,7 +3,7 @@ import { Check, X } from 'lucide-react';
 const LETRAS = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 /**
- * Alternativa de resposta com os estados descritos no layout.md secao 7:
+ * Alternativa de resposta com os estados descritos no docs/layout.md secao 7:
  * padrao, selecionada, correta e incorreta. Acorre e erro nunca sao
  * comunicados apenas por cor: sempre ha icone e texto.
  */

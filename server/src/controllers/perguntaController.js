@@ -1,3 +1,4 @@
+const { literal } = require('sequelize');
 const Pergunta = require('../models/Pergunta');
 const { prepararPerguntas } = require('../utils/shuffle');
 
@@ -12,7 +13,15 @@ async function listar(req, res) {
 
   const limiteNum = Math.min(Math.max(parseInt(limite, 10) || 10, 1), LIMITE_MAX);
 
-  const registros = await Pergunta.findAll({ where, limit: limiteNum });
+  // Sorteio ANTES do limite. Sem `order` o banco devolve sempre as mesmas
+  // primeiras linhas, e `prepararPerguntas` so embaralharia a ordem delas:
+  // toda partida sairia com as mesmas 10 perguntas, so mudadas de lugar.
+  // Sortear no banco e so entao cortar garante variedade real.
+  const registros = await Pergunta.findAll({
+    where,
+    order: literal('RANDOM()'),
+    limit: limiteNum,
+  });
 
   if (registros.length === 0) {
     return res.json({ perguntas: [], total: 0, limite: limiteNum });

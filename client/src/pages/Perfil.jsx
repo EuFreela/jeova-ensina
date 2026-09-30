@@ -1,14 +1,29 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { History, KeyRound, LogOut, Pencil, ShieldCheck, Target, Trophy, UserRound, Users } from 'lucide-react';
+import {
+  Check,
+  History,
+  KeyRound,
+  LogOut,
+  Pencil,
+  ShieldCheck,
+  Target,
+  Trophy,
+  UserRound,
+  Users,
+  X,
+} from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useConfirmacao } from '../contexts/ConfirmacaoContext';
-import { buscarMinhasPontuacoes } from '../services/perguntas';
+import { buscarMinhasPontuacoes } from '../services/pontuacoes';
 import Avatar from '../components/ui/Avatar';
 import Card from '../components/ui/Card';
+import EmptyState from '../components/ui/EmptyState';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import LoadingState from '../components/ui/LoadingState';
 import SecondaryButton from '../components/ui/SecondaryButton';
+
+const POR_PAGINA = 10;
 
 function Estatistica({ rotulo, valor, Icone }) {
   return (
@@ -53,36 +68,193 @@ function ResumoModo({ rotulo, descricao, Icone, dados }) {
   );
 }
 
+/** "2026-03-15T..." -> "15 de mar". */
+function dataCurta(iso) {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' });
+}
+
+function LinhaHistorico({ item }) {
+  const percentual = item.total_perguntas
+    ? Math.round((item.acertos / item.total_perguntas) * 100)
+    : null;
+
+  return (
+    <li className="flex items-center justify-between gap-3 border-b border-line py-2.5 last:border-0">
+      <div className="min-w-0">
+        <p className="text-sm font-semibold text-primary-dark tabular-nums">
+          {item.pontuacao} {item.pontuacao === 1 ? 'ponto' : 'pontos'}
+        </p>
+        <p className="text-xs text-text-muted">
+          {/* `createdAt` em camelCase: e assim que o Sequelize devolve a
+              linha. A coluna no banco e `created_at`, mas o `underscored` do
+              modelo so alcança o SQL, nao o JSON entregue ao cliente. */}
+          {dataCurta(item.createdAt)}
+          {percentual !== null && ` • ${percentual}% de acerto`}
+          {` • ${item.modo === 'campeonato' ? 'Campeonato' : 'Solo'}`}
+        </p>
+      </div>
+      <p className="shrink-0 text-xs text-text-muted tabular-nums">
+        {item.acertos}/{item.total_perguntas}
+      </p>
+    </li>
+  );
+}
+
+/**
+ * Edicao do nome de usuario. O botao ficava desabilitado com o rotulo
+ * "Editar dados (em breve)" desde o inicio — a promessa estava na tela e
+ * nao havia endpoint. Agora existe, e mostra o que vai acontecer em vez de
+ * sumir em silencio.
+ */
+function EditorNome({ user, aoSalvar }) {
+  const [aberto, setAberto] = useState(false);
+  const [valor, setValor] = useState(user?.username || '');
+  const [salvando, setSalvando] = useState(false);
+  const [erro, setErro] = useState('');
+
+  // Ao abrir, o campo parte do nome atual: se o usuario abriu, mudou de
+  // ideia e reabriu, nao fica o rascunho antigo.
+  useEffect(() => {
+    if (aberto) setValor(user?.username || '');
+  }, [aberto, user?.username]);
+
+  async function salvar(evento) {
+    evento.preventDefault();
+    setSalvando(true);
+    setErro('');
+    try {
+      await aoSalvar(valor.trim());
+      setAberto(false);
+    } catch (e) {
+      setErro(e.message || 'Não foi possível trocar o nome.');
+    } finally {
+      setSalvando(false);
+    }
+  }
+
+  if (!aberto) {
+    return (
+      <SecondaryButton
+        larguraTotal
+        onClick={() => setAberto(true)}
+        icone={<Pencil size={17} aria-hidden="true" />}
+      >
+        Editar dados
+      </SecondaryButton>
+    );
+  }
+
+  return (
+    <form onSubmit={salvar} className="flex flex-col gap-2">
+      <label htmlFor="editar-nome" className="text-sm font-semibold text-primary-dark">
+        Nome de usuário
+      </label>
+      <input
+        id="editar-nome"
+        value={valor}
+        onChange={(e) => setValor(e.target.value)}
+        autoFocus
+        maxLength={50}
+        autoComplete="username"
+        aria-describedby="ajuda-editar-nome"
+        className="w-full rounded-field border border-line bg-surface px-3 py-2.5 text-sm outline-none focus:border-primary"
+      />
+      <p id="ajuda-editar-nome" className="text-xs text-text-muted">
+        De 3 a 50 caracteres: letras, números, ponto, hífen ou underscore. As
+        partidas já registradas continuam com o nome antigo, porque o placar
+        guarda o nome de quem jogou na hora.
+      </p>
+      {erro && <ErrorMessage className="text-xs">{erro}</ErrorMessage>}
+      <div className="flex gap-2">
+        <SecondaryButton
+          type="submit"
+          larguraTotal
+          carregando={salvando}
+          desabilitado={salvando}
+          icone={<Check size={16} aria-hidden="true" />}
+        >
+          Salvar
+        </SecondaryButton>
+        <SecondaryButton
+          type="button"
+          variante="neutro"
+          onClick={() => {
+            setAberto(false);
+            setErro('');
+          }}
+          icone={<X size={16} aria-hidden="true" />}
+        >
+          Cancelar
+        </SecondaryButton>
+      </div>
+    </form>
+  );
+}
+
 export default function Perfil() {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, alterarUsuario } = useAuth();
   const confirmar = useConfirmacao();
 
   const [dados, setDados] = useState(null);
+  const [pagina, setPagina] = useState(1);
   const [carregando, setCarregando] = useState(true);
+  const [carregandoHistorico, setCarregandoHistorico] = useState(false);
   const [erro, setErro] = useState('');
 
-  useEffect(() => {
-    let cancelado = false;
+  /**
+   * O mesmo descarte por `id` usado no ranking: trocar de pagina dispara duas
+   * buscas e a resposta velha, se chegasse depois, trocaria a lista exibida
+   * pela de outra pagina sem trocar o numero do rodape.
+   */
+  const requisicao = useRef(0);
 
-    async function carregar() {
+  const carregar = useCallback(
+    async (numero) => {
+      const id = requisicao.current + 1;
+      requisicao.current = id;
+
       setCarregando(true);
       setErro('');
       try {
-        const resposta = await buscarMinhasPontuacoes();
-        if (!cancelado) setDados(resposta);
+        const resposta = await buscarMinhasPontuacoes(undefined, {
+          pagina: numero,
+          porPagina: POR_PAGINA,
+        });
+        if (requisicao.current !== id) return;
+        setDados(resposta);
+        setPagina(numero);
       } catch {
-        if (!cancelado) setErro('Não foi possível carregar suas estatísticas.');
+        if (requisicao.current !== id) return;
+        setErro('Não foi possível carregar suas estatísticas.');
       } finally {
-        if (!cancelado) setCarregando(false);
+        if (requisicao.current === id) setCarregando(false);
       }
-    }
+    },
+    []
+  );
 
-    carregar();
-    return () => {
-      cancelado = true;
-    };
-  }, []);
+  useEffect(() => {
+    carregar(1);
+  }, [carregar]);
+
+  async function trocarPagina(destino) {
+    setCarregandoHistorico(true);
+    try {
+      await carregar(destino);
+    } finally {
+      setCarregandoHistorico(false);
+    }
+  }
+
+  async function salvarNome(novoNome) {
+    // O contexto ja substitui o token e o `user`: o cabecalho e o avatar
+    // desta tela leem de la e nao precisam de nenhuma atualizacao extra.
+    return alterarUsuario(novoNome);
+  }
 
   async function sair() {
     const confirmado = await confirmar({
@@ -99,10 +271,19 @@ export default function Perfil() {
   const resumo = dados?.resumo;
   const porModo = dados?.resumoPorModo;
   const pontuacoes = dados?.pontuacoes || [];
+  const paginacao = dados?.paginacao;
 
-  const totalAcertos = pontuacoes.reduce((soma, p) => soma + (p.acertos || 0), 0);
-  const totalPerguntas = pontuacoes.reduce((soma, p) => soma + (p.total_perguntas || 0), 0);
-  const taxa = totalPerguntas ? Math.round((totalAcertos / totalPerguntas) * 100) : null;
+  /**
+   * A taxa vem pronta do banco (`acertosTotais`/`perguntasTotais` no
+   * `resumo`). Somar as linhas da pagina daria a taxa dos ultimos 10 jogos,
+   * e ela mudaria sozinha a cada pagina carregada.
+   */
+  const taxa = resumo?.perguntasTotais
+    ? Math.round((resumo.acertosTotais / resumo.perguntasTotais) * 100)
+    : null;
+
+  const paginaAtual = paginacao?.pagina || pagina;
+  const ultimaPagina = Math.max(1, Math.ceil((paginacao?.total || 0) / POR_PAGINA));
 
   return (
     <div className="flex flex-col gap-5">
@@ -155,6 +336,59 @@ export default function Perfil() {
               dados={porModo?.campeonato}
             />
           </div>
+
+          {/* Historico. Antes esta tela trazia os numeros e nada mais: o
+              jogador nao conseguia ver nenhuma partida registrada. */}
+          <Card>
+            <p className="flex items-center gap-2 font-display text-sm font-semibold text-primary-dark">
+              <History size={16} aria-hidden="true" />
+              Histórico de partidas
+              {paginacao?.total > 0 && (
+                <span className="text-xs font-normal text-text-muted">
+                  ({paginacao.total})
+                </span>
+              )}
+            </p>
+
+            {paginacao?.total > 0 ? (
+              <>
+                <ul className="mt-2">
+                  {pontuacoes.map((item) => (
+                    <LinhaHistorico key={item.id} item={item} />
+                  ))}
+                </ul>
+
+                {ultimaPagina > 1 && (
+                  <div className="mt-3 flex items-center justify-between gap-2 border-t border-line pt-3">
+                    <SecondaryButton
+                      onClick={() => trocarPagina(paginaAtual - 1)}
+                      desabilitado={carregandoHistorico || paginaAtual <= 1}
+                      aria-label="Página anterior"
+                    >
+                      Anterior
+                    </SecondaryButton>
+                    <span className="text-xs text-text-muted tabular-nums">
+                      Página {paginaAtual} de {ultimaPagina}
+                    </span>
+                    <SecondaryButton
+                      onClick={() => trocarPagina(paginaAtual + 1)}
+                      desabilitado={carregandoHistorico || paginaAtual >= ultimaPagina}
+                      aria-label="Próxima página"
+                    >
+                      Próxima
+                    </SecondaryButton>
+                  </div>
+                )}
+              </>
+            ) : (
+              <EmptyState
+                className="py-6"
+                icone={<History size={22} />}
+                titulo="Nenhuma partida registrada"
+                descricao="Jogue uma partida para começar seu histórico."
+              />
+            )}
+          </Card>
         </>
       )}
 
@@ -168,14 +402,7 @@ export default function Perfil() {
           Trocar senha
         </SecondaryButton>
 
-        <SecondaryButton
-          larguraTotal
-          desabilitado
-          icone={<Pencil size={17} aria-hidden="true" />}
-          title="Edição de dados disponível em breve"
-        >
-          Editar dados (em breve)
-        </SecondaryButton>
+        <EditorNome user={user} aoSalvar={salvarNome} />
 
         <SecondaryButton
           variante="perigo"

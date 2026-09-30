@@ -1,5 +1,28 @@
 # SDD — Adivinhação Bíblica
 
+> ### ⚠️ Documento histórico — não use como especificação
+>
+> Este é o **SDD original**, escrito antes de existir a primeira linha de
+> código. Está preservado como registro de como o projeto foi pensado, e não
+> como descrição do sistema atual.
+>
+> O que foi implementado diverge em pontos importantes. Os que mais confundem
+> quem lê este arquivo hoje:
+>
+> | Aqui | No sistema real |
+> | ---- | --------------- |
+> | Cadastro público (`POST /auth/register`) | **Não existe.** As contas saem do admin, com código de 4 dígitos válido por 5 minutos |
+> | Refresh token (`JWT_REFRESH_SECRET`) | **Não existe.** Um único JWT de 7 dias |
+> | Partida multiplayer por turnos (`ordem_turnos`, "um jogador de cada vez") | **Respostas simultâneas**: todos respondem a mesma pergunta ao mesmo tempo |
+> | Termo "sala" | O código diz **sessão** |
+> | API sem rate limit além do login | Login, senha, admin, pontuação e o resto, todos limitados |
+> | Sem validação de ambiente | O servidor **recusa subir** sem `JWT_SECRET` em produção |
+> | Sem testes automatizados | 104 testes com `node:test` |
+>
+> **Fonte da verdade hoje:** [`README.md`](../README.md) (comandos, rotas,
+> eventos, segurança) e [`script.md`](script.md) (lógica de funcionamento,
+> fluxos e regras). Onde este SDD e o código divergirem, o código ganha.
+
 **Software Design Document**
 
 | Campo | Valor |
@@ -147,7 +170,10 @@ adivinha-biblica/
 │
 ├── .gitignore
 ├── README.md
-└── SDD.md
+└── docs/
+    ├── sdd.md
+    ├── layout.md
+    └── script.md
 ```
 
 ### 3.2 Diagrama de Fluxo

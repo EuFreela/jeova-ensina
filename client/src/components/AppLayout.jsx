@@ -1,9 +1,11 @@
 import { useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import AppHeader from './ui/AppHeader';
+import AvisoSessao from './ui/AvisoSessao';
 import BottomNavigation from './ui/BottomNavigation';
 import { ConfirmacaoProvider, useConfirmacao } from '../contexts/ConfirmacaoContext';
 import { useGame } from '../contexts/GameContext';
+import { usePartida } from '../contexts/PartidaContext';
 
 /** Botao de voltar do cabecalho: confirma antes de abandonar uma partida. */
 function VoltarInteligente() {
@@ -35,10 +37,13 @@ function VoltarInteligente() {
 }
 
 /**
- * Estrutura das telas autenticadas (layout.md secao 3.1):
+ * Estrutura das telas autenticadas (docs/layout.md secao 3.1):
  * cabecalho, conteudo em cartoes e navegacao inferior fixa no mobile.
  */
 export default function AppLayout({ children }) {
+  const { aviso, setAviso } = usePartida();
+  const fecharAviso = useCallback(() => setAviso(''), [setAviso]);
+
   return (
     <ConfirmacaoProvider>
       <div className="flex min-h-dvh flex-col bg-background">
@@ -46,6 +51,9 @@ export default function AppLayout({ children }) {
 
         {/* pb extra reserva o espaco da navegacao inferior no mobile */}
         <main className="mx-auto w-full max-w-3xl flex-1 px-4 pt-4 pb-28 md:pb-10">
+          {/* Aviso do servidor de jogo: fica acima do conteudo e Some sozinho. */}
+          <AvisoSessao aviso={aviso} aoFechar={fecharAviso} />
+
           {children}
         </main>
 

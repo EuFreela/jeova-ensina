@@ -7,6 +7,14 @@ Tipo: Jogo web de perguntas bíblicas de múltipla escolha
 Objetivo deste documento: orientar o OpenCode na implementação das
 telas, componentes, navegação e identidade visual do jogo.
 
+> **Status:** este documento descreve a identidade visual e o comportamento
+> das telas, e foi atualizado para refletir o que existe. As seções 11 a 14
+> (troca de senha, jogar com amigos, partida e administrador) e a tabela de
+> rotas da seção 16 foram reescritas a partir do código real.
+> A **lógica** de funcionamento do jogo — fluxos, estados, regras de sessão,
+> eventos e pontuação — está em `script.md`. Comandos, rotas de
+> API e segurança estão no `README.md`.
+
 1. Visão geral do produto
 
 O Jeová Ensina é um jogo de perguntas e respostas baseado na Bíblia.
@@ -171,7 +179,9 @@ ou alinhado à esquerda, conforme o espaço disponível.
 
 Objetivo
 
-Permitir que o usuário entre na conta ou navegue para o cadastro.
+Permitir que o usuário entre na conta. Não existe cadastro público: a conta é
+criada pelo administrador, que gera um código de 4 dígitos válido por 5
+minutos para ser usado no lugar da senha.
 
 Composição visual
 
@@ -232,10 +242,15 @@ Mostrar estado de carregamento ao enviar.
 
 Após autenticação bem-sucedida, redirecionar para a tela Início.
 
-A aba "Cadastrar" abre a tela/formulário de cadastro.
+O campo de senha aceita tanto a senha definitiva quanto o código inicial de
+4 dígitos, porque é o mesmo campo. Quem entrou com código provisório é levado
+para a troca de senha logo depois do login.
 
-O link de recuperação abre o fluxo de redefinição de senha, caso
-implementado.
+A tela exibe a frase "Não tem uma conta? O acesso é criado por um
+administrador.", no lugar de um link de cadastro.
+
+Recuperação de senha não existe: o admin gera um novo código
+(`POST /api/admin/usuarios/:id/codigo`).
 
 5. Tela inicial (Home)
 
@@ -506,43 +521,142 @@ Ação para editar dados permitidos.
 
 Botão Sair com confirmação.
 
-11. Tela de cadastro
+11. Tela de troca de senha
+
+Objetivo
+
+Permitir que o jogador troque a senha provisória (o código de 4 dígitos)
+por uma definitiva, e trocar o próprio nome de usuário.
 
 Elementos
 
 Marca/ícone da Bíblia aberta.
 
-Título "Criar conta".
+Título "Defina sua senha".
 
-Texto auxiliar curto.
+Campo Senha atual.
 
-Campo Nome de usuário.
+Campo Nova senha.
 
-Campo E-mail, caso o modelo de autenticação use e-mail.
+Campo Confirmar nova senha.
 
-Campo Senha.
+Botão de confirmação, com estado de carregamento.
 
-Campo Confirmar senha.
+Mensagens de validação junto a cada campo.
 
-Botão Criar Conta.
+Ações secundárias, em texto discreto: sair da conta.
 
-Link "Já tem uma conta? Entrar".
+Comportamento
 
-Mensagens de validação e estado de carregamento.
+É a primeira tela depois do login quando o usuário entrou com código
+provisório. O cliente não oferece caminho alternativo: trocar a senha é
+obrigatório no primeiro acesso.
+
+Na tela de perfil, a troca de nome acontece no mesmo lugar, com o mesmo
+padrão de campo e erro. Salvar devolve um token novo, que o cliente
+substitui — o nome antigo está dentro do token, e a presença em tempo
+real mostraria o valor velho até ele expirar.
 
 Validações
 
-Validar campos obrigatórios.
+Senha atual conferida no servidor.
 
-Nome de usuário único, conforme backend.
+Nova senha com no mínimo 8 caracteres.
 
-Validar formato do e-mail quando utilizado.
+A confirmação precisa coincidir com a nova senha.
 
-Senha e confirmação devem coincidir.
+Nome de usuário entre 3 e 50 caracteres, apenas letras, números, ponto,
+hífen e underscore, e único.
 
-Não exibir nem registrar senha em logs.
+O erro do servidor aparece no formulário, sem que a tela recarregue.
 
-12. Componentes reutilizáveis
+12. Tela "Jogar com amigos"
+
+Objetivo
+
+Ser o ponto de entrada da partida ao vivo: abrir uma sessão, entrar com
+um código, ver quem está online e convidar.
+
+Elementos
+
+Título "Jogar com amigos" e um subtítulo curto.
+
+Cartão da sessão atual, quando existe, com status, contagem de
+jogadores, código em destaque e botão de copiar.
+
+Formulário "Criar uma sessão": número de perguntas, categoria,
+dificuldade e tempo por pergunta.
+
+Campo para digitar o código e entrar em uma sessão.
+
+Seção "Quem está online", com o nome de cada pessoa conectada e um botão
+de convidar.
+
+Estado vazio quando ninguém está online.
+
+13. Tela da partida
+
+Objetivo
+
+Concentrar os quatro momentos possíveis: ser convidado, estar no
+lobby, responder as perguntas e ver o fim.
+
+Estados
+
+Convidado. Mostra o código da sessão, quantas pessoas já estão dentro e
+os botões aceitar/recusar. Fora desse estado, quem não é do elenco vê um
+estado vazio explicando que a partida já começou e oferecendo criar a
+própria sessão.
+
+Removido. Estado vazio dizendo quem removeu, com a ação de voltar.
+
+Lobby. Código, lista de jogadores com marca de "ainda não respondeu",
+convites pendentes, quem está online, e as ações do anfitrião
+(iniciar, convidar, adicionar, remover). Jogador que não é anfitrião vê
+as ações desabilhadas, com a explicação de quem pode.
+
+Em jogo. A pergunta, as opções, o cronômetro, o progresso "3 de 10" e
+o placar ao vivo. Todos respondem a mesma pergunta ao mesmo tempo: não
+há ordem de turnos nem vez marcada. Após responder, as opções ficam
+desabilitadas e o gabarito aparece quando o servidor revela.
+
+Fim. Placar final ordenado, com o campeão destacado quando houver mais
+de um jogador, e o número de perguntas respondidas. Sozinho, o título é
+"Resultado".
+
+Prioridade visual
+
+O cronômetro e o placar ficam acima da dobra: são as duas informações
+que o jogador consulta o tempo todo durante a rodada.
+
+14. Tela do administrador
+
+Objetivo
+
+Gerir as contas: criar, gerar código inicial, excluir e zerar a
+pontuação.
+
+Elementos
+
+Título da área administrativa.
+
+Formulário de criação com o campo Nome de usuário.
+
+Lista de usuários cadastrados, cada um com nome, papel, situação da
+senha e data de criação.
+
+Ações por usuário: gerar outro código (com confirmação), excluir a conta
+(com confirmação) e zerar a pontuação.
+
+Estado vazio quando não há nenhum usuário.
+
+Acesso
+
+Somente para `role = 'admin'`. Quem não é, é redirecionado para o
+início. As rotas de admin também são limitadas por IP no servidor: são
+elas que criam e apagam contas.
+
+15. Componentes reutilizáveis
 
 Criar componentes reutilizáveis para manter consistência:
 
@@ -581,25 +695,32 @@ ConfirmDialog --- confirmação de saída/ações importantes.
 Os componentes devem receber dados por propriedades e evitar lógica de
 negócio acoplada à apresentação.
 
-13. Rotas sugeridas
+16. Rotas sugeridas
 
-Adaptar às rotas já existentes no projeto. Sugestão:
+Esta é a tabela que está implementada em `App.jsx`:
 
 Rota               Tela                   Acesso
 
-/login           Login                  Público
-/cadastro        Cadastro               Público
-/ ou /inicio   Home                   Autenticado
-/categorias      Escolha de categoria   Autenticado
-/quiz            Partida/quiz           Autenticado
-/resultado       Resultado              Autenticado
-/ranking         Ranking                Público ou autenticado
-/perfil          Perfil                 Autenticado
+/login            Login                  Público
+/trocar-senha     Trocar senha           Autenticado
+/inicio           Início                 Autenticado
+/categorias       Escolha de categoria   Autenticado
+/quiz             Partida solo           Autenticado
+/partidas         Jogar com amigos       Autenticado
+/partida/:codigo  Partida ao vivo         Autenticado
+/resultado        Resultado              Autenticado
+/ranking          Ranking                Autenticado
+/perfil           Perfil                 Autenticado
+/admin            Administrador          Somente admin
+
+`/cadastro` **não existe**: não há cadastro público. A rota foi
+removida e agora redireciona para `/login`, junto com `/menu` e a raiz
+(que vão para `/inicio`). Qualquer rota desconhecida cai em `/inicio`.
 
 Proteger rotas privadas e redirecionar usuários não autenticados para
 /login. Após login, redirecionar para a Home.
 
-14. Responsividade e acessibilidade
+17. Responsividade e acessibilidade
 
 Garantir funcionamento a partir de 360 px de largura.
 
@@ -624,7 +745,7 @@ Respeitar a preferência de redução de movimento do sistema.
 
 Evitar texto sobre imagens sem camada de contraste.
 
-15. Estados que devem ser implementados
+18. Estados que devem ser implementados
 
 Todas as telas com dados assíncronos devem prever: - Carregamento
 (skeleton ou indicador discreto). - Sucesso. - Lista vazia/ausência de
@@ -632,7 +753,7 @@ conteúdo. - Erro de rede ou servidor. - Ação desabilitada durante
 envio. - Mensagens de validação. - Confirmação para abandonar uma
 partida em andamento.
 
-16. Orientações técnicas para implementação
+19. Orientações técnicas para implementação
 
 O projeto descrito no SDD utiliza React + Vite + Tailwind CSS, com
 React Router, e backend Node.js + Express + Sequelize + SQLite
@@ -663,11 +784,11 @@ Não armazenar senhas no navegador.
 
 Manter os textos da interface em português do Brasil.
 
-17. Ordem recomendada de implementação
+20. Ordem recomendada de implementação
 
 Definir tokens visuais, tipografia e componentes básicos.
 
-Implementar Login e Cadastro.
+Implementar Login.
 
 Implementar layout autenticado, cabeçalho e navegação inferior.
 
@@ -686,7 +807,7 @@ Implementar perfil.
 Revisar responsividade, acessibilidade, estados de erro e
 consistência visual.
 
-18. Critérios de aceite visual
+21. Critérios de aceite visual
 
 A marca aparece como "Jeová Ensina", com ícone de Bíblia aberta
 e sem cruzes.

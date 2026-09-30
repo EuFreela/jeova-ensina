@@ -1,7 +1,7 @@
 import { House, Play, ChartColumn, ShieldCheck } from 'lucide-react';
 
 /**
- * Destinos da navegacao principal (layout.md secao 3.2).
+ * Destinos da navegacao principal (docs/layout.md secao 3.2).
  * "Meu Perfil" nao entra aqui: o avatar do cabecalho ja leva para ele.
  */
 export const DESTINOS = [

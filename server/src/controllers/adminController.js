@@ -24,7 +24,7 @@ async function codigoInicialUnico(forcar = null) {
   }
   for (let tentativa = 0; tentativa < 200; tentativa += 1) {
     const candidato = gerarCodigo();
-    // eslint-disable-next-line no-await-in-loop
+     
     const emUso = await User.findOne({ where: { codigo: candidato } });
     if (!emUso) return candidato;
   }

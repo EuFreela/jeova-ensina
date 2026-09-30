@@ -17,6 +17,11 @@ Pontuacao.init(
       references: {
         model: 'users',
         key: 'id',
+        // Sem isto, apagar um usuario deixava as partidas dele no banco e o
+        // ranking ainda mostrava "Jogador removido" pontuando. CASCADE faz a
+        // pontuacao morrer com o dono.
+        onDelete: 'CASCADE',
+        onUpdate: 'CASCADE',
       },
     },
     pontuacao: {

@@ -86,6 +86,10 @@ class GerenciadorSessoes {
       bonusTotal: 0,
       comboMaximo: 0,
       respondeu: false,
+      // Indice da ultima perguntarespondida. E a guarda que impede a
+      // resposta duplicada: durante a janela de revelacao `respondeu`
+      // volta a false e a mesma pergunta aceitaria varias respostas.
+      respondeuIndice: -1,
       respostas: [],
       // Conexao caiu no meio da partida: o jogador continua no elenco para
       // reconectar, mas nao pontua no historico de competicao.
@@ -289,6 +293,7 @@ class GerenciadorSessoes {
         });
       }
     }, EXPIRA_CONVITE_MS);
+    if (convite.timer.unref) convite.timer.unref();
     doConvite.set(user.id, convite);
     return sessao;
   }
@@ -308,6 +313,14 @@ class GerenciadorSessoes {
    * recusando, sai apenas da lista de pendentes.
    */
   responderConvite(sessao, user, aceitar) {
+    // Precisa existir um convite PENDENTE para este jogador. Sem esta
+    // checagem, qualquer autenticado que conhecesse o codigo da sessao
+    // (ele aparece em presenca:atualizada) poderia "se aceitar sozinho"
+    // e entrar no meio da partida.
+    const pendente = this.convites.get(sessao.codigo)?.get(user.id);
+    if (!pendente || pendente.timer.destroyed) {
+      throw new ErroSessao('Este convite não está mais disponível.', 409);
+    }
     this.expirarConvite(sessao, user.id);
 
     if (!aceitar) {
@@ -317,14 +330,23 @@ class GerenciadorSessoes {
       return { sessao, entrou: true };
     }
 
+    // Elenco travado: um convite aceito durante a partida nao entra.
+    if (sessao.status === 'jogando') {
+      throw new ErroSessao('A sessão já começou e o elenco está travado.', 409);
+    }
+    if (sessao.status === 'encerrada') {
+      throw new ErroSessao('Esta sessão já foi encerrada.', 409);
+    }
+
     const outra = this.doUsuario(user.id);
     if (outra) {
       throw new ErroSessao('Você já está em outra sessão.', 409);
     }
 
+    // `modo` NAO e mexido aqui: ele nasce no inicio (iniciar) e nao muda mais.
+    // Aceitar convite antes de comecar so aumenta o elenco, que o inicio
+    // vai ler para decidir entre solo e campeonato.
     sessao.jogadores.push(this.novoJogador(user));
-    // Mesma regra do inicio: 1 jogador = solo, 2+ = campeonato.
-    if (sessao.jogadores.length > 1) sessao.modo = 'campeonato';
     return { sessao, entrou: true };
   }
 
@@ -360,6 +382,7 @@ class GerenciadorSessoes {
       j.bonusTotal = 0;
       j.comboMaximo = 0;
       j.respondeu = false;
+      j.respondeuIndice = -1;
       j.respostas = [];
     });
     return sessao;
@@ -411,7 +434,13 @@ class GerenciadorSessoes {
     if (!jogador) {
       throw new ErroSessao('Você não participa desta sessão.', 403);
     }
-    if (jogador.respondeu) return sessao;
+    // Uma resposta por pergunta. So `respondeu` nao segura: a janela de
+    // revelacao (2,5s) zera o flag, e nesse intervalo a MESMA pergunta
+    // aceitaria novas respostas, empilhando entradas em `respostas` e
+    // inflando a pontuacao gravada no ranking.
+    if (jogador.respondeu || jogador.respondeuIndice === sessao.indice) {
+      return sessao;
+    }
 
     const pergunta = sessao.perguntas[sessao.indice];
     const correta = normalizar(resposta) === normalizar(pergunta.opcoes[pergunta.resposta_correta]);
@@ -427,6 +456,7 @@ class GerenciadorSessoes {
     jogador.bonusTotal = resultado.bonusTotal;
     jogador.comboMaximo = resultado.comboMaximo;
     jogador.respondeu = true;
+    jogador.respondeuIndice = sessao.indice;
 
     this.io.to(salaDe(sessao.codigo)).emit('ranking:atualizado', { placar: this.placar(sessao) });
 
@@ -444,6 +474,9 @@ class GerenciadorSessoes {
     this.pararTimers(sessao);
     sessao.deadline = Date.now() + sessao.config.tempoPorQuestao * 1000;
     sessao.timer = setTimeout(() => this.avancar(sessao), sessao.config.tempoPorQuestao * 1000);
+    // unref: um timer pendente nao pode segurar o processo vivo. Sem isso,
+    // uma sessao esquecida impede o Node de encerrar no deploy.
+    if (sessao.timer.unref) sessao.timer.unref();
 
     this.io.to(salaDe(sessao.codigo)).emit('partida:pergunta', {
       indice,
@@ -471,6 +504,7 @@ class GerenciadorSessoes {
     });
 
     sessao.timerRevelacao = setTimeout(() => this.avancar(sessao), REVELACAO_MS);
+    if (sessao.timerRevelacao.unref) sessao.timerRevelacao.unref();
   }
 
   avancar(sessao) {
@@ -487,7 +521,10 @@ class GerenciadorSessoes {
     this.pararTimers(sessao);
     sessao.status = 'encerrada';
     sessao.deadline = null;
-    this.persistir(sessao);
+    // Sem await de proposito: o evento "fim" nao pode esperar o banco.
+    // O catch impede que uma rejeicao vire unhandledRejection, que derrubaria
+    // o processo inteiro.
+    this.persistir(sessao).catch((e) => console.error('Falha ao persistir:', e.message));
     this.io.to(salaDe(sessao.codigo)).emit('partida:fim', {
       placar: this.placar(sessao),
       total: sessao.perguntas.length,
@@ -519,7 +556,10 @@ class GerenciadorSessoes {
     }
 
     const registros = sessao.jogadores
-      .filter((j) => !j.abandonou && j.respostas.length >= totalQuestoes)
+      // `===` e nao `>=`: cada pergunta aceita UMA resposta (veja
+      // `respondeuIndice`), entao um total maior significaria bug e nao
+      // pontuacao valida. Compara exato, nao grava.
+      .filter((j) => !j.abandonou && j.respostas.length === totalQuestoes)
       .map((j) => {
         const resultado = calcularPontuacao(j.respostas);
         return {

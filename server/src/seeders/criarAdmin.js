@@ -73,13 +73,13 @@ async function migrarColunas() {
       let sorteado = null;
       for (let tentativa = 0; tentativa < 200 && !sorteado; tentativa += 1) {
         const candidato = gerarCodigo();
-        // eslint-disable-next-line no-await-in-loop
+         
         const emUso = await User.findOne({ where: { codigo: candidato } });
         if (!emUso) sorteado = candidato;
       }
       if (sorteado) {
         usuario.codigo = sorteado;
-        // eslint-disable-next-line no-await-in-loop
+         
         await usuario.save();
       }
     }

@@ -12,7 +12,9 @@ import {
 import { useAuth } from '../hooks/useAuth';
 import { useGame } from '../contexts/GameContext';
 import { usePartida } from '../contexts/PartidaContext';
-import { buscarMinhasPontuacoes } from '../services/perguntas';
+import { buscarMinhasPontuacoes } from '../services/pontuacoes';
+import { versiculoDoDia } from '../services/versiculos';
+import CartaoVersiculo from '../components/ui/CartaoVersiculo';
 import ErrorMessage from '../components/ui/ErrorMessage';
 import PrimaryButton from '../components/ui/PrimaryButton';
 import SecondaryButton from '../components/ui/SecondaryButton';
@@ -57,6 +59,30 @@ export default function Inicio() {
   const [resumo, setResumo] = useState(null);
   const [saindo, setSaindo] = useState(false);
   const [erroSessao, setErroSessao] = useState('');
+  const [versiculo, setVersiculo] = useState(null);
+  const [versiculoCarregando, setVersiculoCarregando] = useState(true);
+  const [erroVersiculo, setErroVersiculo] = useState('');
+
+  // O versiculo nao depende do usuario nem da sessao: uma vez carregado,
+  // vale para o dia inteiro e nao precisa ser buscado de novo.
+  useEffect(() => {
+    let cancelado = false;
+
+    versiculoDoDia()
+      .then((achado) => {
+        if (!cancelado) setVersiculo(achado);
+      })
+      .catch((e) => {
+        if (!cancelado) setErroVersiculo(e.message);
+      })
+      .finally(() => {
+        if (!cancelado) setVersiculoCarregando(false);
+      });
+
+    return () => {
+      cancelado = true;
+    };
+  }, []);
 
   useEffect(() => {
     let cancelado = false;
@@ -208,6 +234,14 @@ export default function Inicio() {
           <ChevronRight size={20} className="shrink-0 text-text-muted" aria-hidden="true" />
         </Link>
       ))}
+
+      {/* Fica no fim de proposito: e um mimo, nao uma acao. Colocando antes
+          do "Jogar Solo" empurraria o botao principal para fora da tela. */}
+      <CartaoVersiculo
+        versiculo={versiculo}
+        carregando={versiculoCarregando}
+        erro={erroVersiculo}
+      />
     </div>
   );
 }

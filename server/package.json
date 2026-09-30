@@ -6,10 +6,12 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "seed": "node src/seeders/seedPerguntas.js",
+    "test": "node --test \"tests/*.test.js\"",
+    "seed": "node src/seeders/seedPerguntas.js && node src/seeders/exportarPerguntas.js",
     "sync": "node src/seeders/syncModels.js",
     "criar:admin": "node src/seeders/criarAdmin.js",
-    "export:perguntas": "node src/seeders/exportarPerguntas.js"
+    "export:perguntas": "node src/seeders/exportarPerguntas.js",
+    "lint": "eslint ."
   },
   "keywords": [
     "biblia",
@@ -23,13 +25,18 @@
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-rate-limit": "^7.4.0",
+    "helmet": "^8.3.0",
     "jsonwebtoken": "^9.0.2",
     "sequelize": "^6.37.3",
     "socket.io": "^4.8.4",
     "sqlite3": "^5.1.7"
   },
   "devDependencies": {
-    "nodemon": "^3.1.4"
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.11.0",
+    "globals": "^17.12.0",
+    "nodemon": "^3.1.4",
+    "supertest": "^7.3.0"
   },
   "allowScripts": {
     "sqlite3@5.1.7": true

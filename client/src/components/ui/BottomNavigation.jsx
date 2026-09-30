@@ -1,8 +1,8 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
-import { destinosDe, destinoAtivo } from './navegacao';
+import { destinosDe, destinoAtivo } from '../../constants/navegacao';
 
-/** Navegacao inferior fixa no mobile (layout.md secao 3.2). */
+/** Navegacao inferior fixa no mobile (docs/layout.md secao 3.2). */
 export default function BottomNavigation() {
   const { pathname } = useLocation();
   const { isAdmin } = useAuth();

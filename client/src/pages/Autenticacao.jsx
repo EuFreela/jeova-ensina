@@ -24,7 +24,7 @@ function validarEntrar({ usuario, senha }) {
 }
 
 /**
- * Tela de login (layout.md secao 4).
+ * Tela de login (docs/layout.md secao 4).
  * Nao ha cadastro publico: as contas sao criadas apenas pelo administrador.
  */
 export default function Autenticacao() {

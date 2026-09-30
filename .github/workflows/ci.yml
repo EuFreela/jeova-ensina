@@ -1,0 +1,40 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  verificar:
+    name: Lint, testes e build
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependencias
+        run: npm ci
+
+      - name: Testes do servidor
+        run: npm test
+
+      - name: Lint (client e server)
+        run: npm run lint
+
+      - name: Build do client
+        run: npm run build
+
+      - name: Conferir que o .env nao foi versionado
+        run: |
+          if git ls-files --error-unmatch client/.env server/.env >/dev/null 2>&1; then
+            echo "ERRO: arquivo .env versionado no repositorio"
+            exit 1
+          fi
+          echo "ok: nenhum .env versionado"

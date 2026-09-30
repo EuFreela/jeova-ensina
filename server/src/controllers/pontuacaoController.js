@@ -4,6 +4,11 @@ const User = require('../models/User');
 const Pergunta = require('../models/Pergunta');
 const { calcularPontuacao } = require('../utils/scoring');
 const { normalizar } = require('../utils/texto');
+const {
+  normalizar: normalizarPeriodo,
+  filtro: filtroDePeriodo,
+  rotulo: rotuloPeriodo,
+} = require('../utils/periodo');
 
 const LIMITE_RANKING = 10;
 const MODOS = ['solo', 'campeonato'];
@@ -44,8 +49,19 @@ async function salvar(req, res) {
     return res.status(400).json({ error: 'Cada resposta deve conter o texto da opção escolhida' });
   }
 
+  // Cada pergunta vale UMA vez. Sem esta deduplicacao, o mesmo `perguntaId`
+  // repetido N vezes entrava N vezes em `respostas` e o calculo de pontos
+  // multiplicava a pontuacao: era so repetir a resposta certa 50 vezes para
+  // aparecer no topo do ranking. A ordem da primeira ocorrencia e preservada
+  // para o calculo de combo continuar fazendo sentido.
+  const vistas = new Set();
   const normalizadas = respostas
-    .filter((r) => porId.has(Number(r.perguntaId)))
+    .filter((r) => {
+      const id = Number(r.perguntaId);
+      if (!porId.has(id) || vistas.has(id)) return false;
+      vistas.add(id);
+      return true;
+    })
     .map((r) => {
       const p = porId.get(Number(r.perguntaId));
       const opcoes = Array.isArray(p.opcoes) ? p.opcoes : [];
@@ -88,6 +104,11 @@ async function ranking(req, res) {
   }
   const filtroModo = modo && modo !== 'todos' ? { modo } : {};
 
+  // Periodo deslizante (7/30/365 dias ou geral). Aplica-se ao ranking E ao
+  // detalhe da melhor partida, para os dois virem do mesmo recorte.
+  const periodo = normalizarPeriodo(req.query.periodo);
+  const filtroPeriodo = filtroDePeriodo(req.query.periodo);
+
   // Quem marcou o ranking solo como privado some da lista alheia, mas continua
   // aparecendo para si mesmo. O filtro e por user_id porque a agregacao roda
   // sobre pontuacoes, que nao tem a preferencia do usuario.
@@ -111,7 +132,7 @@ async function ranking(req, res) {
       [fn('MAX', col('pontuacao')), 'recorde'],
       [fn('COUNT', col('id')), 'jogos'],
     ],
-    where: { ...filtroModo, ...filtroPrivacidade },
+    where: { ...filtroModo, ...filtroPrivacidade, ...filtroPeriodo },
     group: ['user_id'],
     order: [[literal('recorde'), 'DESC']],
     limit: limite,
@@ -119,7 +140,13 @@ async function ranking(req, res) {
   });
 
   if (records.length === 0) {
-    return res.json({ ranking: [], limite, minhaPosicao: null, modo: modo || 'todos' });
+    return res.json({
+      ranking: [],
+      limite,
+      minhaPosicao: null,
+      modo: modo || 'todos',
+      periodo,
+    });
   }
 
   const userIds = records.map((r) => r.user_id);
@@ -130,17 +157,22 @@ async function ranking(req, res) {
   });
   const nomePorId = new Map(usuarios.map((u) => [u.id, u.username]));
 
-  // Detalhes da melhor partida de cada usuario (no maximo 10 consultas).
-  const melhoresJogos = await Promise.all(
-    records.map((r) =>
-      Pontuacao.findOne({
-        where: { user_id: r.user_id, ...filtroModo },
-        order: [['pontuacao', 'DESC']],
-        attributes: ['acertos', 'total_perguntas'],
-        raw: true,
-      })
-    )
-  );
+  // Detalhes da melhor partida de cada usuario, em UMA consulta.
+  // Antes eram `limite` queries (uma por linha do agrupamento). Aqui
+  // buscamos as partidas de todo o recorte ja ordenadas por pontuacao e
+  // o primeiro registro de cada usuario e o recorde dele. Custo: le as
+  // partidas dos `limite` jogadores, nao so as melhores — aceitavel para
+  // os 10 primeiros de um ranking, e o ganho e de 1 query em vez de 10.
+  const partidas = await Pontuacao.findAll({
+    where: { user_id: { [Op.in]: userIds }, ...filtroModo, ...filtroPeriodo },
+    order: [['pontuacao', 'DESC'], ['id', 'ASC']],
+    attributes: ['user_id', 'acertos', 'total_perguntas'],
+    raw: true,
+  });
+  const melhorPorUsuario = new Map();
+  for (const p of partidas) {
+    if (!melhorPorUsuario.has(p.user_id)) melhorPorUsuario.set(p.user_id, p);
+  }
 
   return res.json({
     ranking: records.map((r, i) => ({
@@ -148,13 +180,14 @@ async function ranking(req, res) {
       user_id: r.user_id,
       username: nomePorId.get(r.user_id) || 'Jogador removido',
       recorde: Number(r.recorde),
-      acertos: Number(melhoresJogos[i]?.acertos || 0),
-      total_perguntas: Number(melhoresJogos[i]?.total_perguntas || 0),
+      acertos: Number(melhorPorUsuario.get(r.user_id)?.acertos || 0),
+      total_perguntas: Number(melhorPorUsuario.get(r.user_id)?.total_perguntas || 0),
       jogos: Number(r.jogos),
       souEu: r.user_id === req.userId,
     })),
     limite,
     modo: modo || 'todos',
+    periodo,
     minhaPosicao: records.findIndex((r) => r.user_id === req.userId) + 1 || null,
   });
 }
@@ -166,33 +199,85 @@ async function minhas(req, res) {
   }
   const filtroModo = modo ? { modo } : {};
 
+  const periodo = normalizarPeriodo(req.query.periodo);
+  const filtroPeriodo = filtroDePeriodo(req.query.periodo);
+
+  const pagina = Math.max(parseInt(req.query.pagina, 10) || 1, 1);
+  const porPagina = Math.min(Math.max(parseInt(req.query.porPagina, 10) || 10, 1), 50);
+  const deslocamento = (pagina - 1) * porPagina;
+
   const registros = await Pontuacao.findAll({
-    where: { user_id: req.userId, ...filtroModo },
-    order: [['created_at', 'DESC']],
-    limit: 20,
+    where: { user_id: req.userId, ...filtroModo, ...filtroPeriodo },
+    order: [['created_at', 'DESC'], ['id', 'DESC']],
+    limit: porPagina,
+    offset: deslocamento,
   });
 
-  const recorde = registros.reduce((acc, p) => Math.max(acc, p.pontuacao), 0);
-  const pontosTotais = registros.reduce((acc, p) => acc + p.pontuacao, 0);
+  /**
+   * Os totais sao agregados NO BANCO, nao sobre as linhas da pagina.
+   * Antes eles vinham de `registros.reduce(...)` com `limit: 20`, entao
+   * um jogador com 300 jogos via "3500 pontos, 20 jogos" — e o numero
+   * ainda ENCAIXAVA com o `/api/auth/me`, que somava a vida toda. Resumo
+   * que muda conforme a quantidade de partidas nao e resumo.
+   */
+  const totais = await Pontuacao.findOne({
+    attributes: [
+      [fn('COALESCE', fn('SUM', col('pontuacao')), literal('0')), 'pontosTotais'],
+      [fn('COALESCE', fn('MAX', col('pontuacao')), literal('0')), 'recorde'],
+      [fn('COUNT', col('id')), 'jogos'],
+      // A taxa de acertos tambem e um total do historico inteiro. Somando
+      // `acertos`/`total_perguntas` das linhas da pagina, o jogador com 300
+      // jogos veria a taxa dos 10 mais recentes — e a taxa "cai sozinha"
+      // conforme as paginas carregam, sem nenhum dado novo.
+      [fn('COALESCE', fn('SUM', col('acertos')), literal('0')), 'acertosTotais'],
+      [fn('COALESCE', fn('SUM', col('total_perguntas')), literal('0')), 'perguntasTotais'],
+    ],
+    where: { user_id: req.userId, ...filtroModo, ...filtroPeriodo },
+    raw: true,
+  });
+
+  const porModo = await Pontuacao.findAll({
+    attributes: [
+      'modo',
+      [fn('COALESCE', fn('SUM', col('pontuacao')), literal('0')), 'pontosTotais'],
+      [fn('COALESCE', fn('MAX', col('pontuacao')), literal('0')), 'recorde'],
+      [fn('COUNT', col('id')), 'jogos'],
+    ],
+    // Mesmo periodo dos totais: o quadro "solo x campeonato" precisa contar
+    // as mesmas partidas que a lista acima dele, senao os numeros nao batem.
+    where: { user_id: req.userId, ...filtroPeriodo },
+    group: ['modo'],
+    raw: true,
+  });
 
   // Resumo separado por modo: o perfil mostra os dois lado a lado.
   const resumoPorModo = {};
   for (const m of MODOS) {
-    const doModo = registros.filter((p) => p.modo === m);
+    const linha = porModo.find((p) => p.modo === m);
     resumoPorModo[m] = {
-      recorde: doModo.reduce((acc, p) => Math.max(acc, p.pontuacao), 0),
-      pontosTotais: doModo.reduce((acc, p) => acc + p.pontuacao, 0),
-      jogos: doModo.length,
+      recorde: Number(linha?.recorde || 0),
+      pontosTotais: Number(linha?.pontosTotais || 0),
+      jogos: Number(linha?.jogos || 0),
     };
   }
 
   return res.json({
     pontuacoes: registros,
     modo: modo || 'todos',
+    periodo,
+    periodoRotulo: rotuloPeriodo(periodo),
+    paginacao: {
+      pagina,
+      porPagina,
+      total: Number(totais?.jogos || 0),
+      temMais: deslocamento + registros.length < Number(totais?.jogos || 0),
+    },
     resumo: {
-      recorde,
-      pontosTotais,
-      jogos: registros.length,
+      recorde: Number(totais?.recorde || 0),
+      pontosTotais: Number(totais?.pontosTotais || 0),
+      jogos: Number(totais?.jogos || 0),
+      acertosTotais: Number(totais?.acertosTotais || 0),
+      perguntasTotais: Number(totais?.perguntasTotais || 0),
     },
     resumoPorModo,
   });

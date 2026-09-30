@@ -15,7 +15,7 @@ const AVE3 = 'M300 118 q 8 -7 16 0 q 8 -7 16 0';
 
 /**
  * Paisagem serena ao amanhecer: montanhas, agua, vegetacao e aves.
- * Decorativa: sem texto alternativo obrigatorio (layout.md secao 14).
+ * Decorativa: sem texto alternativo obrigatorio (docs/layout.md secao 14).
  */
 export default function CenaSerena({ className = '' }) {
   return (

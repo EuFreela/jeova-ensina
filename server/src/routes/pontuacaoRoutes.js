@@ -3,6 +3,7 @@ const asyncHandler = require('../utils/asyncHandler');
 const pontuacaoController = require('../controllers/pontuacaoController');
 const authMiddleware = require('../middlewares/authMiddleware');
 const authOpcional = require('../middlewares/authOpcionalMiddleware');
+const { pontuacaoLimiter } = require('../middlewares/rateLimitMiddleware');
 
 const router = express.Router();
 
@@ -10,7 +11,9 @@ const router = express.Router();
 router.get('/ranking', authOpcional, asyncHandler(pontuacaoController.ranking));
 
 router.use(authMiddleware);
-router.post('/', asyncHandler(pontuacaoController.salvar));
+// Salvar pontuação é a única escrita que mexe no ranking: 20/min por IP
+// cobre várias partidas seguidas sem permitir inflar o histórico.
+router.post('/', pontuacaoLimiter, asyncHandler(pontuacaoController.salvar));
 router.get('/eu', asyncHandler(pontuacaoController.minhas));
 
 module.exports = router;

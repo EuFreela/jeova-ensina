@@ -1,6 +1,7 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Eye, Trophy, UserRound, Users } from 'lucide-react';
-import { buscarMinhasPontuacoes, buscarRanking } from '../services/perguntas';
+import { buscarMinhasPontuacoes } from '../services/pontuacoes';
+import { buscarRanking } from '../services/ranking';
 import { useAuth } from '../hooks/useAuth';
 import Avatar from '../components/ui/Avatar';
 import Card from '../components/ui/Card';
@@ -28,6 +29,19 @@ const ABAS = [
     descricao: 'Jogos com outras pessoas: pontuação na disputa do grupo.',
     Icone: Users,
   },
+];
+
+/**
+ * Janelas deslizantes em dias. A tela usava dizer "os filtros por período
+ * chegam em breve" e nao havia nada no servidor para atender; agora o
+ * filtro e real. Os rotulos sao em dias porque "este mes" mudaria de
+ * tamanho todo mes.
+ */
+const PERIODOS = [
+  { chave: '7', rotulo: '7 dias' },
+  { chave: '30', rotulo: '30 dias' },
+  { chave: '365', rotulo: '1 ano' },
+  { chave: 'tudo', rotulo: 'Geral' },
 ];
 
 /**
@@ -109,6 +123,7 @@ function percentualDeAcertos(pontuacoes = []) {
 
 export default function Ranking() {
   const [aba, setAba] = useState('solo');
+  const [periodo, setPeriodo] = useState('tudo');
   const [ranking, setRanking] = useState([]);
   const [minhaPosicao, setMinhaPosicao] = useState(null);
   const [resumo, setResumo] = useState(null);
@@ -116,14 +131,28 @@ export default function Ranking() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
 
-  const carregar = useCallback(async (modo) => {
+  /**
+   * `requestId` descarta a resposta de uma busca que ja foi superada.
+   * Trocar de aba ou de periodo dispara duas buscas; se a primeira voltar
+   * depois da segunda, ela sobrescreveria a tela com os numeros da aba
+   * antiga. Sem isto, o `resumo`/`taxa` ficavam pendurados: por um instante
+   * a tela mostrava "Solo" no titulo com os numeros do Campeonato.
+   */
+  const requestId = useRef(0);
+
+  const carregar = useCallback(async (modo, janela) => {
+    const id = requestId.current + 1;
+    requestId.current = id;
+
     setCarregando(true);
     setErro('');
     try {
       const [dadosRanking, meus] = await Promise.all([
-        buscarRanking(modo),
-        buscarMinhasPontuacoes(modo).catch(() => null),
+        buscarRanking(modo, janela),
+        buscarMinhasPontuacoes(modo, { periodo: janela }).catch(() => null),
       ]);
+
+      if (requestId.current !== id) return;
 
       setRanking(dadosRanking.ranking || []);
       setMinhaPosicao(dadosRanking.minhaPosicao ?? null);
@@ -131,19 +160,29 @@ export default function Ranking() {
       if (meus) {
         setResumo(meus.resumo);
         setTaxa(percentualDeAcertos(meus.pontuacoes));
+      } else {
+        // Sem historico para este recorte: zerar em vez de manter os
+        // numeros do recorte anterior, que continuariam na tela.
+        setResumo(null);
+        setTaxa(null);
       }
     } catch {
+      if (requestId.current !== id) return;
+      setRanking([]);
+      setResumo(null);
+      setTaxa(null);
       setErro('Não foi possível carregar o ranking.');
     } finally {
-      setCarregando(false);
+      if (requestId.current === id) setCarregando(false);
     }
   }, []);
 
   useEffect(() => {
-    carregar(aba);
-  }, [carregar, aba]);
+    carregar(aba, periodo);
+  }, [carregar, aba, periodo]);
 
   const abaAtiva = ABAS.find((a) => a.chave === aba) || ABAS[0];
+  const periodoAtivo = PERIODOS.find((p) => p.chave === periodo) || PERIODOS[3];
   const temMeusDados = Boolean(resumo && resumo.jogos > 0);
 
   return (
@@ -179,9 +218,34 @@ export default function Ranking() {
         })}
       </div>
 
-      <p className="-mt-2 text-xs text-text-muted">
-        Os filtros por período chegam em breve. Por enquanto, exibimos a classificação geral.
-      </p>
+      {/* Periodo: a mesma janela vale para o ranking e para o quadro "sua
+          posicao", para os dois nunca contarem partidas diferentes. */}
+      <div>
+        <p className="mb-1.5 text-xs font-semibold tracking-wide text-text-muted uppercase">
+          Periodo
+        </p>
+        <div className="flex gap-1.5 overflow-x-auto pb-1">
+          {PERIODOS.map((item) => {
+            const ativo = periodo === item.chave;
+            return (
+              <button
+                key={item.chave}
+                type="button"
+                aria-pressed={ativo}
+                onClick={() => setPeriodo(item.chave)}
+                className={[
+                  'min-h-11 shrink-0 rounded-field border px-3.5 text-sm font-medium transition-colors',
+                  ativo
+                    ? 'border-primary bg-primary-light text-primary'
+                    : 'border-line bg-surface text-secondary hover:border-primary/40',
+                ].join(' ')}
+              >
+                {item.rotulo}
+              </button>
+            );
+          })}
+        </div>
+      </div>
 
       {/* O ranking solo e a unica lista visivel a todos, entao e nele que o
           jogador escolhe se aparece. No campeonato os participantes ja se
@@ -194,6 +258,14 @@ export default function Ranking() {
           <p className="flex items-center gap-2 font-display text-sm font-semibold text-primary">
             <Trophy size={16} aria-hidden="true" />
             Sua posição
+            {periodo !== 'tudo' && (
+              /* O periodo precisa estar escrito: os numeros abaixo nao sao
+                 os de sempre, e um jogador que ja conhece o historico vai
+                 ler "30 pontos" e achar que perdeu posicao. */
+              <span className="rounded-field bg-surface px-2 py-0.5 text-xs font-medium text-text-muted">
+                {periodoAtivo.rotulo}
+              </span>
+            )}
           </p>
           <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-4">
             <div>
@@ -233,7 +305,7 @@ export default function Ranking() {
       ) : erro ? (
         <div className="flex flex-col gap-3">
           <ErrorMessage>{erro}</ErrorMessage>
-          <SecondaryButton onClick={() => carregar(aba)} className="self-start">
+          <SecondaryButton onClick={() => carregar(aba, periodo)} className="self-start">
             Tentar novamente
           </SecondaryButton>
         </div>
@@ -241,12 +313,18 @@ export default function Ranking() {
         <EmptyState
           icone={<Trophy size={22} />}
           titulo={
-            aba === 'solo' ? 'Ninguém jogou solo ainda' : 'Nenhum campeonato ainda'
+            periodo !== 'tudo'
+              ? `Ninguém pontuou ${periodoAtivo.rotulo.toLowerCase()}`
+              : aba === 'solo'
+                ? 'Ninguém jogou solo ainda'
+                : 'Nenhum campeonato ainda'
           }
           descricao={
-            aba === 'solo'
-              ? 'Seja o primeiro a jogar sozinho e apareça neste ranking.'
-              : 'Crie uma sessão, convide amigos e o primeiro campeonato aparece aqui.'
+            periodo !== 'tudo'
+              ? 'Algu um jogou nesse período, mas não apareceu no ranking desta aba. Tente "Geral" ou outra janela.'
+              : aba === 'solo'
+                ? 'Seja o primeiro a jogar sozinho e apareça neste ranking.'
+                : 'Crie uma sessão, convide amigos e o primeiro campeonato aparece aqui.'
           }
         />
       ) : (

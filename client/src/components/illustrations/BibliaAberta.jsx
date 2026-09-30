@@ -1,6 +1,6 @@
 /**
  * Biblia aberta - icone da marca.
- * Detalhes em azul e dourado, sem cruzes (layout.md secao 2.4).
+ * Detalhes em azul e dourado, sem cruzes (docs/layout.md secao 2.4).
  */
 export default function BibliaAberta({ className = '' }) {
   const linhas = [38, 44.5, 51, 57.5, 64];

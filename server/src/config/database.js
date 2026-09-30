@@ -14,7 +14,9 @@ const options = {
 };
 
 if (dialect === 'sqlite') {
-  options.storage = process.env.DATABASE_STORAGE || path.join(__dirname, '..', '..', 'database.sqlite');
+  // O banco fica em server/data/, fora de src/: é um artefato local,
+  // versionado pelo .gitignore e nunca deve ficar junto do código.
+  options.storage = process.env.DATABASE_STORAGE || path.join(__dirname, '..', '..', 'data', 'database.sqlite');
 } else {
   options.host = process.env.DATABASE_HOST || 'localhost';
   options.port = Number(process.env.DATABASE_PORT) || 5432;

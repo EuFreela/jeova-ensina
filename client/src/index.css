@@ -4,7 +4,7 @@
   --font-display: 'Poppins', system-ui, sans-serif;
   --font-sans: 'Inter', system-ui, sans-serif;
 
-  /* Paleta definida no layout.md, secao 2.1 */
+  /* Paleta definida no docs/layout.md, secao 2.1 */
   --color-primary: #1557a6;
   --color-primary-dark: #12366a;
   --color-primary-light: #eaf2fc;
@@ -21,7 +21,7 @@
   --color-error: #d94b4b;
   --color-error-light: #fdecec;
 
-  /* Formas e espacamento: layout.md secao 2.3 */
+  /* Formas e espacamento: docs/layout.md secao 2.3 */
   --radius-field: 12px;
   --radius-button: 14px;
   --radius-card: 18px;

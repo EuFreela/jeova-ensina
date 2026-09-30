@@ -1,0 +1,31 @@
+{
+  "name": "jeova-ensina",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Jeová Ensina — jogo de perguntas bíblicas com solo e partidas em tempo real",
+  "license": "MIT",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w server\" \"npm run dev -w client\"",
+    "dev:api": "npm run dev -w server",
+    "dev:web": "npm run dev -w client",
+    "build": "npm run build -w client",
+    "preview": "npm run preview -w client",
+    "start": "npm run start -w server",
+    "lint": "npm run lint -w client && npm run lint -w server",
+    "test": "npm run test -w server",
+    "setup": "npm install && npm run seed",
+    "seed": "npm run seed -w server",
+    "sync": "npm run sync -w server",
+    "criar:admin": "npm run criar:admin -w server"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

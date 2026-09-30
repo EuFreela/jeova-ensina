@@ -9,6 +9,16 @@ const SALA_PRESENCA = 'presenca';
 const SALA_DE = (codigo) => `sessao:${codigo}`;
 
 /**
+ * Le um booleano de um payload de socket sem a armadilha do Boolean().
+ * `Boolean("false")` e `true`, entao um cliente que serializou a flag
+ * errado reiniciaria uma partida em andamento so com isso. Aqui so
+ * `true` e aceito como verdadeiro; o resto e falso.
+ */
+function flag(valor) {
+  return valor === true;
+}
+
+/**
  * Camada em tempo real das sessoes de jogo.
  * Autentica por JWT e mantem a presenca de quem esta online.
  */
@@ -21,7 +31,10 @@ function criarRealtime(httpServer) {
   });
 
   const sessoes = new GerenciadorSessoes(io);
-  const online = new Map(); // userId -> { userId, username, socketId }
+  // userId -> { userId, username }. Nao guarda socketId: com varias abas
+  // abertas o valor era sobrescrito a cada conexao e nunca era lido.
+  // Quem tem mais de uma aba e controlado por `socketsPorUsuario`.
+  const online = new Map();
   // Um usuario pode ter mais de uma aba aberta.
   const socketsPorUsuario = new Map(); // userId -> Set<socketId>
 
@@ -83,7 +96,7 @@ function criarRealtime(httpServer) {
 
   io.on('connection', (socket) => {
     const user = socket.data.user;
-    online.set(user.id, { userId: user.id, username: user.username, socketId: socket.id });
+    online.set(user.id, { userId: user.id, username: user.username });
     registrarSocket(user.id, socket.id);
     socket.join(SALA_PRESENCA);
     transmitirPresenca();
@@ -157,6 +170,10 @@ function criarRealtime(httpServer) {
               `Você já está na sessão ${anterior.codigo}. Saia dela antes de criar outra.`
             );
           }
+          // Sai do ROOM antigo antes de publicar: o `sair` do gerenciador
+          // cuida do elenco, mas nao das salas do socket. Sem este leave o
+          // jogador continuaria recebendo os eventos da sessao que deixou.
+          socket.leave(SALA_DE(anterior.codigo));
           sessoes.sair(anterior, user.id);
         }
 
@@ -185,7 +202,7 @@ function criarRealtime(httpServer) {
         const alvo = await User.findByPk(userId);
         if (!alvo) throw new Error('Usuário não encontrado');
 
-        sessoes.adicionar(sessao, user.id, alvo, { reiniciar: Boolean(reiniciar) });
+        sessoes.adicionar(sessao, user.id, alvo, { reiniciar: flag(reiniciar) });
         const estado = publicarEstado(sessao);
         return { estado };
       })
@@ -202,7 +219,7 @@ function criarRealtime(httpServer) {
           return { estado: publicarEstado(sessao), convidado: alvo.username };
         }
 
-        sessoes.convidar(sessao, user.id, alvo, { reiniciar: Boolean(reiniciar) });
+        sessoes.convidar(sessao, user.id, alvo, { reiniciar: flag(reiniciar) });
 
         // O convidado so entra no elenco depois de responder "sim".
         notificarUsuario(alvo.id, 'convite:recebido', {
@@ -219,7 +236,7 @@ function criarRealtime(httpServer) {
       'sessao:responder_convite',
       tratar(async ({ codigo, aceitar }) => {
         const sessao = sessoes.exigir(codigo);
-        const { entrou } = sessoes.responderConvite(sessao, user, Boolean(aceitar));
+        const { entrou } = sessoes.responderConvite(sessao, user, flag(aceitar));
 
         if (entrou) socket.join(SALA_DE(sessao.codigo));
         const estado = publicarEstado(sessao);
@@ -308,7 +325,6 @@ function criarRealtime(httpServer) {
       // So encerra a presenca quando nao resta nenhuma aba aberta.
       if (!socketsPorUsuario.has(user.id)) {
         online.delete(user.id);
-        transmitirPresenca();
 
         // Conexao caiu no meio da partida: o slot fica no elenco (para
         // reconectar), mas o resultado nao entra no historico. So e
@@ -327,6 +343,9 @@ function criarRealtime(httpServer) {
         const temAlguemOnline = sessao.jogadores.some((j) => online.has(j.userId));
         if (!temAlguemOnline) sessoes.destruir(sessao);
       }
+
+      // Uma unica transmissao no fim: antes este bloco emitia duas vezes
+      // (uma ao remover a presenca, outra no fim), com a mesma lista.
       transmitirPresenca();
     });
   });

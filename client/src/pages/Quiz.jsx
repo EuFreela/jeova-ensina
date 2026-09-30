@@ -4,7 +4,8 @@ import { BookOpen, ChevronRight, CircleCheck, CircleX, Clock, Heart } from 'luci
 import { useAuth } from '../hooks/useAuth';
 import { useGame } from '../contexts/GameContext';
 import { useConfirmacao } from '../contexts/ConfirmacaoContext';
-import { buscarPerguntas, salvarPontuacao } from '../services/perguntas';
+import { buscarPerguntas } from '../services/perguntas';
+import { salvarPontuacao } from '../services/pontuacoes';
 import { calcularPontuacao, PONTOS_POR_DIFICULDADE } from '../services/scoring';
 import AnswerOption from '../components/ui/AnswerOption';
 import Card from '../components/ui/Card';

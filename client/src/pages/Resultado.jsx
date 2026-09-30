@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { BookOpen, Medal, RotateCcw, Sparkles, Trophy } from 'lucide-react';
 import { useGame } from '../contexts/GameContext';
-import { salvarPontuacao } from '../services/perguntas';
+import { salvarPontuacao } from '../services/pontuacoes';
 import Card from '../components/ui/Card';
 import PrimaryButton from '../components/ui/PrimaryButton';
 import SecondaryButton from '../components/ui/SecondaryButton';

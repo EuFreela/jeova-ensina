@@ -3,9 +3,10 @@ setlocal enabledelayedexpansion
 chcp 65001 >nul
 title Adivinhacao Biblica
 
-set "RAIZ=%~dp0"
-set "SERVIDOR=%RAIZ%server"
-set "CLIENTE=%RAIZ%client"
+REM Este arquivo vive em scripts\, entao a raiz do projeto e um nivel acima.
+set "RAIZ=%~dp0.."
+set "SERVIDOR=%RAIZ%\server"
+set "CLIENTE=%RAIZ%\client"
 set "API_PORT=3002"
 set "WEB_PORT=5173"
 
@@ -68,23 +69,23 @@ echo.
 
 REM ---------- Dependencias ----------
 if not exist "%SERVIDOR%\node_modules" (
-  echo  [1/4] Instalando dependencias do servidor...
+  echo  [1/5] Instalando dependencias do servidor...
   pushd "%SERVIDOR%"
   call npm install
   if errorlevel 1 ( popd & echo ERRO: falha ao instalar as dependencias do servidor. & pause & exit /b 1 )
   popd
 ) else (
-  echo  [1/4] Dependencias do servidor OK.
+  echo  [1/5] Dependencias do servidor OK.
 )
 
 if not exist "%CLIENTE%\node_modules" (
-  echo  [2/4] Instalando dependencias do frontend...
+  echo  [2/5] Instalando dependencias do frontend...
   pushd "%CLIENTE%"
   call npm install
   if errorlevel 1 ( popd & echo ERRO: falha ao instalar as dependencias do frontend. & pause & exit /b 1 )
   popd
 ) else (
-  echo  [2/4] Dependencias do frontend OK.
+  echo  [2/5] Dependencias do frontend OK.
 )
 
 REM ---------- Variaveis de ambiente ----------
@@ -98,19 +99,46 @@ if not exist "%CLIENTE%\.env" (
 )
 
 REM ---------- Banco de dados ----------
-if exist "%SERVIDOR%\database.sqlite" (
-  echo  [3/4] Banco de dados ja existe.
+if exist "%SERVIDOR%\data\database.sqlite" (
+  echo  [3/5] Banco de dados ja existe.
 ) else (
-  echo  [3/4] Criando o banco e populando as perguntas...
+  echo  [3/5] Criando o banco e populando as perguntas...
   pushd "%SERVIDOR%"
   call npm run seed
   if errorlevel 1 ( popd & echo ERRO: falha ao popular o banco. & pause & exit /b 1 )
   popd
 )
 
+REM ---------- Administrador ----------
+REM Nao existe cadastro publico: as contas sao criadas pelo admin. Sem este
+REM passo, quem installasse o projeto pela primeira vez ficaria sem nenhuma
+REM conta e sem nenhum caminho para entrar. O comando e idempotente: se ja
+REM existe admin, ele so avisa e sai com codigo 0.
+echo  [4/5] Verificando o administrador...
+set "ARQ_ADMIN=%TEMP%\jeova-criar-admin.txt"
+pushd "%SERVIDOR%"
+call npm run criar:admin > "%ARQ_ADMIN%" 2>&1
+popd
+findstr /C:"SENHA DO ADMINISTRADOR" "%ARQ_ADMIN%" >nul
+if not errorlevel 1 (
+  echo.
+  type "%ARQ_ADMIN%"
+  echo   ^<- Anote a senha antes de continuar. Ela nao aparece de novo.
+  echo.
+  pause
+  del /q "%ARQ_ADMIN%" >nul 2>&1
+) else (
+  echo       Administrador ja cadastrado.
+  del /q "%ARQ_ADMIN%" >nul 2>&1
+)
+
 REM ---------- Aviso de porta ocupada ----------
+REM A sub-rotina devolve errorlevel 0 quando a porta ESTA ocupada (findstr
+REM encontrou a linha do netstat) e 1 quando esta livre. A condicao abaixo
+REM esta ao contrario: ela avisava "porta em uso" justamente quando a porta
+REM estava livre, e calava na unica situacao que precisava de aviso.
 call :porta_ocupada %API_PORT%
-if errorlevel 1 (
+if not errorlevel 1 (
   echo.
   echo   AVISO: a porta %API_PORT% ja esta em uso por outro programa.
   echo   A API pode nao subir. Se for o Adivinhacao Biblica, use a opcao 1.
@@ -118,7 +146,7 @@ if errorlevel 1 (
 )
 
 REM ---------- Subir os servicos ----------
-echo  [4/4] Subindo a API e o frontend...
+echo  [5/5] Subindo a API e o frontend...
 echo.
 start "Adivinhacao - API" cmd /k "cd /d "%SERVIDOR%" && node server.js"
 timeout /t 2 /nobreak >nul

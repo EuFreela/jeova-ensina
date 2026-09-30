@@ -10,6 +10,10 @@ class User extends Model {
   toJSON() {
     const values = { ...this.get() };
     delete values.password;
+    // O codigo de 4 digitos e metade da senha: quem tem o codigo entra na
+    // conta. A senha saia daqui, o codigo nao — e qualquer `res.json(user)`
+    // (login, /me, criar usuario no admin) devolvia os dois.
+    delete values.codigo;
     return values;
   }
 }
