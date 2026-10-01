@@ -1,18 +1,26 @@
 # 🎮
-
 <div align="center">
 
-🎮 JEOVÁ ENSINA
-Plataforma de Perguntas Bíblicas em Tempo Real
+# JEOVÁ ENSINA
 
-Full Stack · Web App · Multiplayer · Ranking · Administração
+### Plataforma de Perguntas Bíblicas em Tempo Real
 
-React · Node.js · Express · Socket.IO · SQLite · JWT · Tailwind CSS
+**Full Stack · Web App · Multiplayer · Ranking · Administração**
+
+[![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge\&logo=react\&logoColor=black)](https://react.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-18%2B-339933?style=for-the-badge\&logo=node.js\&logoColor=white)](https://nodejs.org/)
+[![Express](https://img.shields.io/badge/Express-5-000000?style=for-the-badge\&logo=express\&logoColor=white)](https://expressjs.com/)
+[![Socket.IO](https://img.shields.io/badge/Socket.IO-4-010101?style=for-the-badge\&logo=socket.io\&logoColor=white)](https://socket.io/)
+[![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?style=for-the-badge\&logo=sqlite\&logoColor=white)](https://www.sqlite.org/)
+[![Vite](https://img.shields.io/badge/Vite-7-646CFF?style=for-the-badge\&logo=vite\&logoColor=white)](https://vite.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-4-06B6D4?style=for-the-badge\&logo=tailwindcss\&logoColor=white)](https://tailwindcss.com/)
+[![GitHub Actions](https://img.shields.io/badge/CI-GitHub_Actions-2088FF?style=for-the-badge\&logo=github-actions\&logoColor=white)](https://github.com/features/actions)
+
+**React · Node.js · Express · Socket.IO · SQLite · JWT · Tailwind CSS**
 
 Uma plataforma web de perguntas bíblicas criada para estudo individual e partidas em grupo, permitindo que jogadores respondam simultaneamente, acompanhem pontuações e participem de rankings.
 
-📖 Estude. Responda. Compita. Aprenda.
-
+> 📖 **Estude. Responda. Compita. Aprenda.**
 </div>
 ---
 
