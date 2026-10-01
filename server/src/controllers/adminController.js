@@ -1,6 +1,12 @@
 const User = require('../models/User');
 const Pontuacao = require('../models/Pontuacao');
-const { gerarCodigo, codigoValido, expirarCodigo, VALIDADE_CODIGO_MINUTOS } = require('../utils/codigo');
+const {
+  gerarCodigo,
+  codigoValido,
+  expirarCodigo,
+  guardarSeguro,
+  VALIDADE_CODIGO_MINUTOS,
+} = require('../utils/codigo');
 const { publico, validarUsername } = require('./authController');
 
 const PAPEIS = ['player', 'admin'];
@@ -16,16 +22,19 @@ async function listarUsuarios(req, res) {
 /**
  * Codigo de 4 digitos unico entre os usuarios. Com apenas 10.000 combinações
  * possibles, sorteia novamente enquanto o numero ja estiver em uso.
+ *
+ * A busca e feita sobre `codigo_guardado` (o HMAC do codigo), e nao sobre o
+ * codigo em texto puro: e o mesmo criterio de unicidade, sem que a coluna
+ * consultada seja a credencial em si. Ver `utils/codigo.js`.
  */
 async function codigoInicialUnico(forcar = null) {
   if (codigoValido(forcar)) {
-    const emUso = await User.findOne({ where: { codigo: forcar } });
+    const emUso = await User.findOne({ where: { codigo_guardado: guardarSeguro(forcar) } });
     if (!emUso) return forcar;
   }
   for (let tentativa = 0; tentativa < 200; tentativa += 1) {
     const candidato = gerarCodigo();
-     
-    const emUso = await User.findOne({ where: { codigo: candidato } });
+    const emUso = await User.findOne({ where: { codigo_guardado: guardarSeguro(candidato) } });
     if (!emUso) return candidato;
   }
   throw new Error('Não foi possível gerar um código de 4 dígitos único');
@@ -34,7 +43,7 @@ async function codigoInicialUnico(forcar = null) {
 /**
  * Cria um usuario cujo acesso inicial e um CODIGO de 4 digitos (no lugar da
  * senha antiga), valido por 5 minutos. O texto puro volta UMA UNICA VEZ nesta
- * resposta: no banco fica apenas o hash.
+ * resposta: no banco ficam o hash da senha e o HMAC do codigo.
  *
  * O admin pode enviar um codigo proprio; se nao vier, o sistema sorteia um.
  */
@@ -67,7 +76,9 @@ async function criarUsuario(req, res) {
       username: nome,
       // O codigo de 4 digitos E a senha inicial.
       password: codigoGerado,
-      codigo: codigoGerado,
+      // O HMAC guarda a mesma informacao para o teste de unicidade sem
+      // deixar a credencial em texto puro na tabela.
+      codigo_guardado: guardarSeguro(codigoGerado),
       senha_expira_em: expirarCodigo(),
       role: papel,
       must_change_password: true,
@@ -75,7 +86,7 @@ async function criarUsuario(req, res) {
 
     return res.status(201).json({
       usuario: publico(user),
-      // Atencao: exibido apenas uma vez. Nao e armazenado em texto puro.
+      // Atencao: exibido apenas uma vez. No banco, so o hash e o HMAC.
       codigoInicial: codigoGerado,
       validadeMinutos: VALIDADE_CODIGO_MINUTOS,
     });
@@ -172,7 +183,7 @@ async function atualizarCodigo(req, res) {
 
   const codigoGerado = await codigoInicialUnico();
   usuario.password = codigoGerado;
-  usuario.codigo = codigoGerado;
+  usuario.codigo_guardado = guardarSeguro(codigoGerado);
   usuario.senha_expira_em = expirarCodigo();
   usuario.must_change_password = true;
   await usuario.save();

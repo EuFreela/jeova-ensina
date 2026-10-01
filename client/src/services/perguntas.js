@@ -65,18 +65,26 @@ function embaralhar(lista) {
 }
 
 /**
- * As opções são embaralhadas a cada partida, então o índice exibido ao
- * jogador deixa de bater com o índice original do banco. A pergunta preparada
- * já vem com resposta_correta apontando para a nova ordem.
+ * As opções são embaralhadas a cada partida.
+ *
+ * No modo API o servidor NÃO envia `resposta_correta` (o gabarito saiu uma
+ * pergunta por vez em `verificarResposta`). No modo local (fallback) o gabarito
+ * existe no arquivo estatico, e e usado apenas para feedback offline — partidas
+ * locais nunca sao salvas no ranking.
  */
 function preparar(perguntas) {
   return embaralhar(perguntas).map((p) => {
+    const temGabarito = Object.prototype.hasOwnProperty.call(p, 'resposta_correta')
+      && p.resposta_correta !== null && p.resposta_correta !== undefined;
     const opcoes = p.opcoes.map((texto, indice) => ({ texto, indice }));
     const embaralhadas = embaralhar(opcoes);
+    const novoIndice = temGabarito
+      ? embaralhadas.findIndex((o) => o.indice === p.resposta_correta)
+      : null;
     return {
       ...p,
       opcoes: embaralhadas.map((o) => o.texto),
-      resposta_correta: embaralhadas.findIndex((o) => o.indice === p.resposta_correta),
+      ...(temGabarito ? { resposta_correta: novoIndice } : {}),
     };
   });
 }
@@ -95,6 +103,11 @@ async function carregarLocais() {
 /**
  * Busca perguntas na API. Se a API falhar (offline, servidor fora do ar),
  * cai para o arquivo local em /public/data/perguntas.json.
+ *
+ * `rodada` e o token que o servidor emite junto das perguntas. Ele precisa
+ * voltar em `salvarPontuacao()`: e o que prova ao servidor que estas respostas
+ * sao de perguntas que ele entregou. No modo local nao existe rodada, e o
+ * servidor nunca aceita a partida.
  */
 export async function buscarPerguntas({ limite = 10, categoria, dificuldade } = {}) {
   try {
@@ -102,7 +115,7 @@ export async function buscarPerguntas({ limite = 10, categoria, dificuldade } = 
       params: { limite, categoria, dificuldade },
     });
     if (Array.isArray(data.perguntas) && data.perguntas.length) {
-      return { perguntas: preparar(data.perguntas), origem: 'api' };
+      return { perguntas: preparar(data.perguntas), origem: 'api', rodada: data.rodada || null };
     }
     throw new Error('API respondeu sem perguntas');
   } catch {
@@ -115,7 +128,30 @@ export async function buscarPerguntas({ limite = 10, categoria, dificuldade } = 
       filtradas = filtradas.filter((p) => p.dificuldade === dificuldade);
     }
     const finita = filtradas.length ? filtradas : locais;
-    return { perguntas: preparar(finita).slice(0, limite), origem: 'local' };
+    return { perguntas: preparar(finita).slice(0, limite), origem: 'local', rodada: null };
+  }
+}
+
+/**
+ * Veredito do servidor para UMA pergunta.
+ *
+ * O jogo precisa dizer na hora se o jogador acertou, e dizer qual era a resposta
+ * certa. Esse dado sai daqui, pergunta por pergunta, e so depois que a escolha
+ * foi feita — e nao junto com a lista de perguntas, que entregaria o gabarito
+ * inteiro de uma vez.
+ *
+ * Devolve `null` quando nao ha veredito (rede caiu, teto de requisicoes, sessao
+ * expirada). `null` e diferente de `{ correta: false }` de proposito: quem chama
+ * precisa distinguir "errou" de "nao deu para saber", porque sao coisas bem
+ * diferentes para quem estava jogando. Transformar silencio em "errado!" custaria
+ * uma vida ao jogador por um erro que nao foi dele.
+ */
+export async function verificarResposta({ rodada, perguntaId, resposta }) {
+  try {
+    const { data } = await api.post('/perguntas/responder', { rodada, perguntaId, resposta });
+    return { correta: Boolean(data.correta), respostaCorreta: data.respostaCorreta ?? null };
+  } catch {
+    return null;
   }
 }
 

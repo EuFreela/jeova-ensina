@@ -9,6 +9,7 @@ const {
   criarUsuario,
   criarPergunta,
   tokenDe,
+  rodadaDe,
   reqRes,
   User,
   Pontuacao,
@@ -27,6 +28,7 @@ test('repetir a MESMA pergunta nao infla a pontuacao', async () => {
   await criarUsuario();
   const token = await tokenDe('jogador');
   const p = await criarPergunta({ dificuldade: 'dificil' }); // 30 pontos
+  const { rodada } = await rodadaDe(token);
 
   // A mesma pergunta repetida 3 vezes no MESMO payload. Antes da correcao
   // cada ocorrencia entrava em `respostas` e o calculo somava 3 x 30 = 90
@@ -35,6 +37,7 @@ test('repetir a MESMA pergunta nao infla a pontuacao', async () => {
     .post('/api/pontuacoes')
     .set('Authorization', `Bearer ${token}`)
     .send({
+      rodada,
       respostas: [
         { perguntaId: p.id, resposta: 'Moisés' },
         { perguntaId: p.id, resposta: 'Moisés' },
@@ -51,12 +54,16 @@ test('50 repeticoes da resposta certa rendem o valor de UMA pergunta', async () 
   await criarUsuario();
   const token = await tokenDe('jogador');
   const p = await criarPergunta({ dificuldade: 'dificil' }); // 30 pontos
+  const { rodada } = await rodadaDe(token);
 
   // 50 e exatamente o teto aceito por requisicao: o pior caso do ataque.
   const res = await request(app)
     .post('/api/pontuacoes')
     .set('Authorization', `Bearer ${token}`)
-    .send({ respostas: Array.from({ length: 50 }, () => ({ perguntaId: p.id, resposta: 'Moisés' })) });
+    .send({
+      rodada,
+      respostas: Array.from({ length: 50 }, () => ({ perguntaId: p.id, resposta: 'Moisés' })),
+    });
 
   assert.equal(res.status, 201);
   assert.equal(res.body.pontuacao.pontuacao, 30, 'nao 1500');
@@ -67,11 +74,13 @@ test('a dedup vale no payload inteiro, nao so em repeticoes exatas', async () =>
   await criarUsuario();
   const token = await tokenDe('jogador');
   const p = await criarPergunta({ dificuldade: 'facil' }); // 10 pontos
+  const { rodada } = await rodadaDe(token);
 
   const res = await request(app)
     .post('/api/pontuacoes')
     .set('Authorization', `Bearer ${token}`)
     .send({
+      rodada,
       respostas: [
         { perguntaId: p.id, resposta: 'Moisés' },
         { perguntaId: String(p.id), resposta: 'Moisés' }, // mesmo id, outra forma
@@ -89,11 +98,13 @@ test('perguntas diferentes nao sao dedupadas entre si', async () => {
   const token = await tokenDe('jogador');
   const a = await criarPergunta({ dificuldade: 'facil' });
   const b = await criarPergunta({ dificuldade: 'medio' });
+  const { rodada } = await rodadaDe(token);
 
   const res = await request(app)
     .post('/api/pontuacoes')
     .set('Authorization', `Bearer ${token}`)
     .send({
+      rodada,
       respostas: [
         { perguntaId: a.id, resposta: 'Moisés' },
         { perguntaId: b.id, resposta: 'Moisés' },

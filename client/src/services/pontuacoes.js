@@ -1,8 +1,13 @@
 import api from './api';
 
-/** Envia as respostas e recebe a pontuacao recalculada pelo servidor. */
-export async function salvarPontuacao(respostas, modo = 'solo') {
-  const { data } = await api.post('/pontuacoes', { respostas, modo });
+/**
+ * Envia as respostas e recebe a pontuacao recalculada pelo servidor.
+ *
+ * `rodada` e o token que veio de `buscarPerguntas`. Sem ele o servidor recusa a
+ * partida: e ele que amarra as respostas a perguntas que ele mesmo entregou.
+ */
+export async function salvarPontuacao(respostas, modo = 'solo', rodada = null) {
+  const { data } = await api.post('/pontuacoes', { respostas, modo, rodada });
   return data;
 }
 

@@ -10,16 +10,21 @@ const pontuacaoRoutes = require('./routes/pontuacaoRoutes');
 const { notFound, errorHandler } = require('./middlewares/erroMiddleware');
 const { geralLimiter } = require('./middlewares/rateLimitMiddleware');
 const { origemLiberada } = require('./config/origens');
+const { configurarTrustProxy } = require('./config/trustProxy');
 
 const app = express();
 
 // Sem isto o rate limit usa req.ip, que atras de um proxy e o IP do proxy:
 // todo mundo cai no mesmo contador e um atacante trava o login de todos.
 // Os saltos saem do TRUST_PROXY; 1 e o padrao em Vercel/Render/Railway.
-if (process.env.TRUST_PROXY) {
-  const saltos = Number(process.env.TRUST_PROXY);
-  app.set('trust proxy', Number.isFinite(saltos) && saltos > 0 ? saltos : 1);
-}
+//
+// A leitura mora em `config/trustProxy.js` porque tem um caso que a
+// verificacao ingênua erra: "0" e uma string verdadeira em JavaScript, e
+// `Number("0") > 0` e falso — quem escrevesse TRUST_PROXY=0 para dizer
+// "estou sem proxy" acabava com `trust proxy = 1` e passava a confiar no
+// X-Forwarded-For sem proxy à frente, deixando o req.ip a escolha de quem
+// faz a requisicao.
+configurarTrustProxy(app);
 
 // Headers de seguranca (CSP, X-Content-Type-Options, X-Frame-Options,
 // Referrer-Policy, HSTS...). crossOriginResourcePolicy liberado porque a

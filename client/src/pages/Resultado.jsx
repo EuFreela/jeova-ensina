@@ -128,9 +128,14 @@ export default function Resultado() {
       .filter((r) => r.perguntaId != null)
       .map((r) => ({ perguntaId: r.perguntaId, resposta: r.opcaoEscolhida ?? '' }));
 
+    // A rodada vem junto do resultado: sem ela o servidor recusa a partida.
+    // Vale notar que o reenvio so funciona enquanto a rodada nao foi consumida,
+    // entao ele recupera falha de rede, nao uma partida ja pontuada.
+    const rodada = resultado.rodada || null;
+
     definirSalvamento({ carregando: true, erro: null });
     try {
-      const { resumo } = await salvarPontuacao(payload);
+      const { resumo } = await salvarPontuacao(payload, 'solo', rodada);
       registrarResultado({
         ...resultado,
         pontos: resumo.pontuacao,

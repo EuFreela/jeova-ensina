@@ -333,7 +333,7 @@ export default function Ranking() {
           <ol className="flex flex-col gap-2 md:hidden">
             {ranking.map((item) => (
               <LeaderboardRow
-                key={item.user_id}
+                key={item.username}
                 posicao={item.posicao}
                 username={item.username}
                 recorde={item.recorde}
@@ -377,7 +377,7 @@ export default function Ranking() {
                     : null;
                   return (
                     <tr
-                      key={item.user_id}
+                      key={item.username}
                       className={[
                         'border-b border-line last:border-0',
                         item.souEu ? 'bg-primary-light' : '',

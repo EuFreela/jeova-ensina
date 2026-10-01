@@ -453,15 +453,15 @@ export default function Partidas() {
                           ? 'Na sua sessão'
                           : pendente
                             ? 'Convite enviado, aguardando resposta'
-                            : p.sessaoCodigo
-                              ? `Em outra sessão (${p.sessaoCodigo})`
+                            : p.emSessao
+                              ? 'Em outra sessão'
                               : 'Livre'}
                       </p>
                     </div>
                     {pendente ? (
                       <span className="text-xs font-medium text-accent">Convidado</span>
                     ) : (
-                      ehAnfitriao && !naMinha && !p.sessaoCodigo && (
+                      ehAnfitriao && !naMinha && !p.emSessao && (
                       <>
                         {confirmandoCom === p.userId ? (
                           <span className="flex flex-col items-end gap-1">

@@ -1,108 +1,17 @@
 require('dotenv').config();
-const { DataTypes } = require('sequelize');
 const sequelize = require('../config/database');
-
-require('../models/User');
-require('../models/Pergunta');
-require('../models/Pontuacao');
+const { migrarColunas } = require('./migracoes');
 
 const User = require('../models/User');
 const { gerarSenha } = require('../utils/senha');
-const { gerarCodigo } = require('../utils/codigo');
 
 /**
- * Garante as colunas novas em bancos ja existentes (SQLite/Postgres),
- * sem recriar tabelas nem perder dados.
+ * Cria (ou reseta) a conta de administrador e imprime a senha uma unica vez.
  *
- * Precisa rodar ANTES do sequelize.sync(): o modelo Pontuacao declara um
- * indice sobre pontuacoes.modo, e o sync tenta criar esse indice em um banco
- * antigo onde a coluna ainda nao existe.
+ * As migracoes de esquema estao em `migracoes.js`, compartilhadas com
+ * `syncModels.js`: aqui rodam porque este script tambem e usado em banco
+ * antigo, onde o `sync()` sozinho deixaria colunas faltando.
  */
-async function migrarColunas() {
-  const qi = sequelize.getQueryInterface();
-  const tabelas = (await qi.showAllTables()).map(String);
-
-  if (tabelas.includes('users')) {
-    const descricao = await qi.describeTable('users');
-
-    if (!descricao.role) {
-      await qi.addColumn('users', 'role', {
-        type: DataTypes.STRING(20),
-        allowNull: false,
-        defaultValue: 'player',
-      });
-      console.log('Coluna users.role adicionada.');
-    }
-
-    if (!descricao.must_change_password) {
-      await qi.addColumn('users', 'must_change_password', {
-        type: DataTypes.BOOLEAN,
-        allowNull: false,
-        defaultValue: false,
-      });
-      console.log('Coluna users.must_change_password adicionada.');
-    }
-
-    if (!descricao.senha_expira_em) {
-      await qi.addColumn('users', 'senha_expira_em', {
-        type: DataTypes.DATE,
-        allowNull: true,
-      });
-      console.log('Coluna users.senha_expira_em adicionada.');
-    }
-
-    // Codigo curto de 4 digitos por usuario (identificador, nao login).
-    if (!descricao.codigo) {
-      // O SQLite nao aceita UNIQUE em ADD COLUMN: a coluna entra simples e a
-      // unicidade vem como indice, criada logo abaixo.
-      await qi.addColumn('users', 'codigo', {
-        type: DataTypes.STRING(4),
-        allowNull: true,
-      });
-      await qi.addIndex('users', ['codigo'], {
-        name: 'users_codigo_unique',
-        unique: true,
-      });
-      console.log('Coluna users.codigo adicionada (com indice unico).');
-    }
-
-    // Garante que nenhuma conta fique sem codigo (contas criadas antes da
-    // coluna existirem). Com 10.000 combinacoes, sorts enquanto colide.
-    const semCodigo = await User.findAll({ where: { codigo: null } });
-    for (const usuario of semCodigo) {
-      let sorteado = null;
-      for (let tentativa = 0; tentativa < 200 && !sorteado; tentativa += 1) {
-        const candidato = gerarCodigo();
-         
-        const emUso = await User.findOne({ where: { codigo: candidato } });
-        if (!emUso) sorteado = candidato;
-      }
-      if (sorteado) {
-        usuario.codigo = sorteado;
-         
-        await usuario.save();
-      }
-    }
-    if (semCodigo.length) {
-      console.log(`Codigo de 4 digitos gerado para ${semCodigo.length} usuario(s).`);
-    }
-  }
-
-  // Rankings separados: 'solo' e 'campeonato'.
-  if (tabelas.includes('pontuacoes')) {
-    const descricao = await qi.describeTable('pontuacoes');
-
-    if (!descricao.modo) {
-      await qi.addColumn('pontuacoes', 'modo', {
-        type: DataTypes.STRING(20),
-        allowNull: false,
-        defaultValue: 'solo',
-      });
-      console.log('Coluna pontuacoes.modo adicionada (partidas antigas contam como solo).');
-    }
-  }
-}
-
 async function main() {
   await sequelize.authenticate();
   // Colunas primeiro, sync depois (o sync cria o indice de pontuacoes.modo).

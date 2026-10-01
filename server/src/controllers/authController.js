@@ -3,14 +3,23 @@ const { fn, col, literal } = require('sequelize');
 const User = require('../models/User');
 const Pontuacao = require('../models/Pontuacao');
 const { codigoExpirou, VALIDADE_CODIGO_MINUTOS } = require('../utils/codigo');
+const { registrarFalha, registrarSucesso } = require('../middlewares/limiteContaMiddleware');
 
 const MIN_SENHA = 8;
+
+/**
+ * O algoritmo e fixado nos dois lados. O `jsonwebtoken` ja recusa `alg:none`,
+ * mas deixar o algoritmo por conta da biblioteca significa que a aceitacao
+ * depende da versao instalada em vez do codigo: fixar aqui e o que garante
+ * que so HS256 com o segredo do ambiente abre este sistema.
+ */
+const ALGORITMO = 'HS256';
 
 function gerarToken(user) {
   return jwt.sign(
     { id: user.id, username: user.username, role: user.role },
     process.env.JWT_SECRET,
-    { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
+    { algorithm: ALGORITMO, expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
   );
 }
 
@@ -51,12 +60,35 @@ function validarUsername(username) {
   return null;
 }
 
+/**
+ * Corpo de TODA tentativa de login recusada, sem excecao.
+ *
+ * Antes o login respondia de quatro jeitos diferentes: nome invalido, conta
+ * inexistente, codigo vencido e senha errada. Cada resposta distinta era uma
+ * bitola sobre o que existe: bastava sondar um nome e comparar. Agora todas
+ * devolvem este objeto — inclusive a de `validarCredenciais`, que antes
+ * falava com a mensagem exata do defeito de formatacao.
+ *
+ * O `dica` e constante de proposito. Ele cobre o caso real do "codigo
+ * vencido" (o jogador precisa saber que tem 5 minutos e um caminho para
+ * pedir outro) sem virar um sinal: aparece em todas as falhas, com o mesmo
+ * texto, inclusive quando o nome nem existe. Quem sabe que o codigo venceu
+ * continua sendo quem tentava entrar, e so ele.
+ */
+const FALHA_LOGIN = Object.freeze({
+  error: 'Credenciais inválidas',
+  dica:
+    'O código inicial vale por ' +
+    VALIDADE_CODIGO_MINUTOS +
+    ' minutos. Se o seu venceu, peça um novo ao administrador.',
+});
+
 async function login(req, res) {
   const { username, password } = req.body || {};
 
   const erro = validarCredenciais(username, password);
   if (erro) {
-    return res.status(401).json({ error: 'Credenciais inválidas' });
+    return res.status(401).json(FALHA_LOGIN);
   }
 
   const user = await User.scope('withPassword').findOne({
@@ -64,22 +96,24 @@ async function login(req, res) {
   });
 
   if (!user) {
-    return res.status(401).json({ error: 'Credenciais inválidas' });
+    registrarFalha(username);
+    return res.status(401).json(FALHA_LOGIN);
   }
 
   // O codigo inicial de 4 digitos vale por 5 minutos. Passou disso, nem
   // a senha antiga nem um codigo novo funcionam: o admin precisa gerar outro.
   if (codigoExpirou(user)) {
-    return res.status(401).json({
-      error: `Código expirado. Peça ao administrador um novo código (válido por ${VALIDADE_CODIGO_MINUTOS} minutos).`,
-    });
+    registrarFalha(username);
+    return res.status(401).json(FALHA_LOGIN);
   }
 
   const senhaCorreta = await user.checkPassword(password);
   if (!senhaCorreta) {
-    return res.status(401).json({ error: 'Credenciais inválidas' });
+    registrarFalha(username);
+    return res.status(401).json(FALHA_LOGIN);
   }
 
+  registrarSucesso(username);
   return res.json({ token: gerarToken(user), user: publico(user) });
 }
 
@@ -187,9 +221,11 @@ async function alterarSenha(req, res) {
   user.password = novaSenha;
   user.must_change_password = false;
   // A senha real substitui o codigo inicial: a validade de 5 minutos deixa
-  // de valer para sempre e o numero sorteado e descartado.
+  // de valer para sempre e o numero sorteado e descartado. O HMAC vai junto
+  // para nao sobrar nenhum vestigio do codigo antigo.
   user.senha_expira_em = null;
   user.codigo = null;
+  user.codigo_guardado = null;
   await user.save();
 
   // Reemite o token para manter os dados em sincronia (novo estado de senha).
@@ -219,6 +255,8 @@ async function definirVisibilidadeRanking(req, res) {
 }
 
 module.exports = {
+  ALGORITMO,
+  FALHA_LOGIN,
   login,
   me,
   alterarUsuario,

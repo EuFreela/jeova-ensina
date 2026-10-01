@@ -14,6 +14,9 @@ class User extends Model {
     // conta. A senha saia daqui, o codigo nao — e qualquer `res.json(user)`
     // (login, /me, criar usuario no admin) devolvia os dois.
     delete values.codigo;
+    // O HMAC do codigo tambem nao tem porque sair: serve so para o teste de
+    // unicidade dentro do servidor.
+    delete values.codigo_guardado;
     return values;
   }
 }
@@ -80,18 +83,34 @@ User.init(
       type: DataTypes.DATE,
       allowNull: true,
     },
-    // Codigo curto de 4 digitos, criado junto com a conta para o jogador
-    // identificar e memorizar o seu acesso.
+    /**
+     * Coluna legacy: o codigo de 4 digitos em texto claro, que era gravado
+     * junto com a conta. Nao e mais preenchida em nenhum caminho de escrita —
+     * o valor_plain novo fica em `codigo_guardado`, que e um HMAC. A coluna
+     * continua aqui para que `migrarColunas` (em criarAdmin.js) possa ler e
+     * apagar os valores antigos; em um banco novo ela nasce vazia.
+     *
+     * Ver o HMAC em `utils/codigo.js` para o porque de nao guardar em claro.
+     */
     codigo: {
       type: DataTypes.STRING(4),
       allowNull: true,
-      unique: true,
       validate: {
         is: {
           args: /^\d{4}$/,
           msg: 'Código deve ter exatamente 4 dígitos',
         },
       },
+    },
+    /**
+     * HMAC-SHA256 do codigo inicial, com indice unico. Deterministico, entao
+     * dois codigos iguais colidem igual; irreversivel sem o segredo, entao
+     * quem le a tabela nao consegue transformar a linha em senha de acesso.
+     */
+    codigo_guardado: {
+      type: DataTypes.STRING(64),
+      allowNull: true,
+      unique: true,
     },
     // Obriga a troca da senha provisoria no primeiro acesso.
     must_change_password: {

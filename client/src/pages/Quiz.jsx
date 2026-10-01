@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, ChevronRight, CircleCheck, CircleX, Clock, Heart } from 'lucide-react';
+import { BookOpen, ChevronRight, CircleCheck, CircleX, Clock, Heart, Info } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useGame } from '../contexts/GameContext';
 import { useConfirmacao } from '../contexts/ConfirmacaoContext';
-import { buscarPerguntas } from '../services/perguntas';
+import { buscarPerguntas, verificarResposta } from '../services/perguntas';
 import { salvarPontuacao } from '../services/pontuacoes';
 import { calcularPontuacao, PONTOS_POR_DIFICULDADE } from '../services/scoring';
 import AnswerOption from '../components/ui/AnswerOption';
@@ -48,6 +48,12 @@ export default function Quiz() {
   const [carregando, setCarregando] = useState(true);
   const [erro, setErro] = useState('');
   const [origem, setOrigem] = useState(null);
+  // Prova, dada pelo servidor, de que as perguntas desta partida foram servidas
+  // a ESTE jogador. Sem ela `salvarPontuacao` e recusado. `null` no modo local.
+  const [rodada, setRodada] = useState(null);
+  // Veredito da ultima pergunta, como o servidor respondiu: se acertou e qual
+  // era o texto da resposta certa. O gabarito nao vem mais junto da pergunta.
+  const [veredito, setVeredito] = useState(null);
 
   const travadoRef = useRef(false);
   const timerRef = useRef(null);
@@ -59,6 +65,16 @@ export default function Quiz() {
   const relogioAtivo = config.tempoPorQuestao > 0;
   const respondida = selecionada !== null;
   const acabouVidas = vidas <= 0;
+
+  /**
+   * Indice da opcao correta NA TELA. O servidor devolve o TEXTO (a ordem das
+   * opcoes muda a cada partida, no cliente e no servidor), entao a posicao na
+   * tela e localizada aqui.
+   */
+  const indiceCorreto = useMemo(() => {
+    if (!respondida || !veredito?.respostaCorreta || !atual) return -1;
+    return atual.opcoes.findIndex((o) => o === veredito.respostaCorreta);
+  }, [respondida, veredito, atual]);
 
   const parcial = calcularPontuacao(respostas);
   const progresso = perguntas.length
@@ -72,13 +88,14 @@ export default function Quiz() {
       setCarregando(true);
       setErro('');
       try {
-        const { perguntas: lista, origem: fonte } = await buscarPerguntas({
+        const { perguntas: lista, origem: fonte, rodada: token } = await buscarPerguntas({
           limite: config.total,
           categoria: config.categoria,
           dificuldade: config.dificuldade,
         });
         if (cancelado) return;
         setOrigem(fonte);
+        setRodada(token);
         setPerguntas(lista);
         if (!lista.length) setErro('Nenhuma pergunta encontrada para esse filtro.');
       } catch {
@@ -102,12 +119,15 @@ export default function Quiz() {
       const resultado = calcularPontuacao(todasAsRespostas);
       const motivo = vidas <= 0 ? 'vidas' : 'completa';
       // Guarda as respostas para permitir reenviar a pontuacao sem perder o resultado.
+      // A rodada tambem viaja: e ela que autoriza o reenvio caso o primeiro
+      // POST falhe por rede.
       const base = {
         ...resultado,
         origem: fonte,
         salvo: false,
         motivo,
         respostas: todasAsRespostas,
+        rodada,
       };
       registrarResultado(base);
       navigate('/resultado', { replace: true });
@@ -128,7 +148,7 @@ export default function Quiz() {
           .filter((r) => r.perguntaId != null)
           .map((r) => ({ perguntaId: r.perguntaId, resposta: r.opcaoEscolhida ?? '' }));
 
-        const { resumo } = await salvarPontuacao(payload);
+        const { resumo } = await salvarPontuacao(payload, 'solo', rodada);
         registrarResultado({
           ...base,
           pontos: resumo.pontuacao,
@@ -146,32 +166,80 @@ export default function Quiz() {
         });
       }
     },
-    [definirSalvamento, navigate, registrarResultado, vidas]
+    [definirSalvamento, navigate, registrarResultado, vidas, rodada]
   );
 
+  /**
+   * Registra a resposta de uma pergunta.
+   *
+   * No modo API o "acertou ou errou" NAO e decidido aqui: o cliente nao tem o
+   * gabarito. Ele pergunta ao servidor, que compara o texto escolhido com a
+   * resposta da pergunta no banco, e devolve o veredito. O feedback da tela
+   * continua imediato — ha so uma ida ao servidor entre o clique e o "Resposta
+   * correta!", e o servidor ja era consultado de qualquer forma para gravar a
+   * pontuação no fim.
+   *
+   * No modo local (fallback offline) o gabarito esta no arquivo estatico e a
+   * comparação é feita aqui. Partida offline nunca entra no ranking, então não
+   * ha nada a forjar.
+   */
   const responder = useCallback(
-    (escolha) => {
+    async (escolha) => {
       if (travadoRef.current || !atual) return;
       travadoRef.current = true;
       if (timerRef.current) window.clearInterval(timerRef.current);
 
-      const correta = escolha === atual.resposta_correta;
+      const escolhido = escolha >= 0 ? atual.opcoes[escolha] : '';
+
+      let vereditoLocal;
+      if (escolha < 0) {
+        // Tempo no fim. Nao ha escolha para conferir, e NAO se pergunta ao
+        // servidor: ele responderia com o gabarito, e a resposta sairia de
+        // graca para quem simplesmente deixasse o relogio zerar — 10 acertos
+        // garantidos por partida sem gastar uma vida.
+        vereditoLocal = { correta: false, respostaCorreta: null };
+      } else if (origem === 'api' && rodada && atual.id != null) {
+        // `null` aqui significa "o servidor nao respondeu", nao "errou". A
+        // partida nao pode travar por causa de uma ida ao servidor que falhou
+        // (rede, 401, teto de requisicoes), e a tela precisa dizer que nao sabe
+        // em vez de inventar um "errado!" que custaria uma vida ao jogador.
+        //
+        // A resposta segue no `payload` e o servidor recalcula tudo no fim, a
+        // partir do texto enviado — a pontuacao real nao depende deste veredito.
+        // Vidas tambem nao: perder vida por falha de rede seria cobrar do
+        // jogador algo que nao foi erro dele.
+        const doServidor = await verificarResposta({
+          rodada,
+          perguntaId: atual.id,
+          resposta: escolhido,
+        });
+        vereditoLocal = doServidor ?? { correta: null, respostaCorreta: null };
+      } else {
+        const gabarito = atual.resposta_correta;
+        const acertou = gabarito != null && escolha === gabarito;
+        vereditoLocal = {
+          correta: acertou,
+          respostaCorreta: gabarito != null ? atual.opcoes[gabarito] : null,
+        };
+      }
+
       const novasRespostas = [
         ...respostas,
         {
           perguntaId: atual.id,
           escolha,
-          opcaoEscolhida: escolha >= 0 ? atual.opcoes[escolha] : '',
-          correta,
+          opcaoEscolhida: escolhido,
+          correta: vereditoLocal.correta,
           dificuldade: atual.dificuldade,
         },
       ];
 
+      setVeredito(vereditoLocal);
       setSelecionada(escolha);
       setRespostas(novasRespostas);
-      if (!correta) setVidas(vidas - 1);
+      if (vereditoLocal.correta === false) setVidas((v) => v - 1);
     },
-    [atual, respostas, vidas]
+    [atual, respostas, origem, rodada]
   );
 
   responderRef.current = responder;
@@ -205,6 +273,7 @@ export default function Quiz() {
     travadoRef.current = false;
     setIndice((i) => i + 1);
     setSelecionada(null);
+    setVeredito(null);
     setTempo(config.tempoPorQuestao);
   }
 
@@ -237,13 +306,19 @@ export default function Quiz() {
     );
   }
 
-  const acertou = respondida && selecionada === atual.resposta_correta;
+  const acertou = respondida && veredito?.correta === true;
   const esgotouTempo = respondida && selecionada === -1;
+  // O servidor nao confirmou (falha de rede, teto de requisicoes, sessao
+  // expirada). A tela diz isso em vez de tratar o silencio como erro.
+  const semVeredito = respondida && !esgotouTempo && veredito?.correta == null;
   const valorDificuldade = PONTOS_POR_DIFICULDADE[atual.dificuldade] ?? 10;
 
   function estadoOpcao(i) {
     if (!respondida) return 'padrao';
-    if (i === atual.resposta_correta) return 'correta';
+    // Sem veredito nao existe "opcao correta" a pintar: realçar uma delas seria
+    // chutar o gabarito na tela do jogador.
+    if (indiceCorreto < 0) return i === selecionada ? 'selecionada' : 'esmaecida';
+    if (i === indiceCorreto) return 'correta';
     if (i === selecionada) return 'incorreta';
     return 'esmaecida';
   }
@@ -320,7 +395,7 @@ export default function Quiz() {
         <div
           className={[
             'animate-pop flex items-start gap-3 rounded-field border px-4 py-3 text-sm',
-            esgotouTempo
+            esgotouTempo || semVeredito
               ? 'border-line bg-background text-secondary'
               : acertou
                 ? 'border-success/40 bg-success-light text-success'
@@ -330,6 +405,8 @@ export default function Quiz() {
           <span className="mt-0.5 shrink-0" aria-hidden="true">
             {esgotouTempo ? (
               <Clock size={18} />
+            ) : semVeredito ? (
+              <Info size={18} />
             ) : acertou ? (
               <CircleCheck size={18} />
             ) : (
@@ -340,14 +417,21 @@ export default function Quiz() {
             <p className="font-semibold">
               {esgotouTempo
                 ? 'Tempo esgotado!'
-                : acertou
-                  ? `Resposta correta! +${valorDificuldade} pts`
-                  : 'Resposta incorreta.'}
+                : semVeredito
+                  ? 'Não foi possível confirmar agora.'
+                  : acertou
+                    ? `Resposta correta! +${valorDificuldade} pts`
+                    : 'Resposta incorreta.'}
             </p>
-            {!acertou && (
+            {semVeredito && (
               <p className="mt-1">
-                Resposta correta:{' '}
-                <strong className="font-semibold">{atual.opcoes[atual.resposta_correta]}</strong>
+                Sua resposta foi guardada e entra na pontuação final — só o
+                servidor não respondeu a tempo.
+              </p>
+            )}
+            {!acertou && !semVeredito && indiceCorreto >= 0 && (
+              <p className="mt-1">
+                Resposta correta: <strong className="font-semibold">{atual.opcoes[indiceCorreto]}</strong>
               </p>
             )}
             {atual.referencia && (

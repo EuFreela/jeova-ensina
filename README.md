@@ -91,7 +91,7 @@ O `.env` nunca é versionado — só os `.env.example` entram no repositório.
 | `JWT_SECRET` | server | — | **Obrigatório.** O servidor recusa a subir sem ele; em `production` também recusa o valor de exemplo do `.env.example` e segredos com menos de 32 caracteres |
 | `JWT_EXPIRES_IN` | server | `7d` | Validade do token |
 | `EXIGIR_SEGREDO` | server | `false` | Sobe a exigência de `JWT_SECRET` (tamanho mínimo) sem fingir que é produção. Útil em CI |
-| `TRUST_PROXY` | server | `0` | **Use `1` atrás de proxy reverso.** Os limiters contam por IP; sem isto uma pessoa só trava o acesso de todos |
+| `TRUST_PROXY` | server | `0` | **Use `1` atrás de proxy reverso.** Os limiters contam por IP; sem isto uma pessoa só trava o acesso de todos. `0`, `false` ou vazio = não confiar em proxy nenhum (padrão seguro) |
 | `CLIENT_URL` | server | `http://localhost:5173` | Origens autorizadas, separadas por vírgula. Aceita `*` como curinga |
 | `CORS_LAN` | server | `true` em dev | Libera origens da rede local (192.168.x.x, 10.x.x.x, 172.16-31.x.x, `.local`) |
 | `DATABASE_DIALECT` | server | `sqlite` | `sqlite` ou `postgres` |
@@ -100,6 +100,7 @@ O `.env` nunca é versionado — só os `.env.example` entram no repositório.
 | `LIMITE_SENHA` | server | `10` / 15 min | Trocas de senha e de nome |
 | `LIMITE_ADMIN` | server | `60` / 15 min | Rotas administrativas |
 | `LIMITE_PONTUACAO` | server | `20` / min | Envios de pontuação |
+| `LIMITE_VEREDITO` | server | `120` / min | Veredito por pergunta, **por conta** (não por IP: a rede local compartilha um só endereço) |
 | `LIMITE_GERAL` | server | `300` / min | Demais rotas |
 | `VITE_API_URL` | client | `/api` | Se a API ficar em outro host, use a URL completa |
 | `VITE_SOCKET_URL` | client | mesma origem | Se o Socket.IO ficar em outro host |
@@ -175,12 +176,13 @@ Base: `/api`. As rotas marcadas exigem token; as de sessão também exigem perfi
 | `PUT` | `/auth/usuario` | usuário | Troca o próprio nome de usuário (devolve token novo) |
 | `POST` | `/auth/change-password` | usuário | Troca a senha |
 | `PUT` | `/auth/ranking-visibilidade` | usuário | Define se aparece no ranking solo |
-| `GET` | `/perguntas` | — | Lista por categoria, dificuldade e limite |
-| `GET` | `/perguntas/categorias` | — | Categorias disponíveis |
-| `GET` | `/perguntas/:id` | — | Uma pergunta |
+| `GET` | `/perguntas` | usuário | Lista por categoria, dificuldade e limite. **Sem o gabarito**; devolve o token da rodada |
+| `GET` | `/perguntas/categorias` | usuário | Categorias disponíveis |
+| `GET` | `/perguntas/:id` | usuário | Uma pergunta, também sem o gabarito |
+| `POST` | `/perguntas/responder` | usuário | Veredito de uma pergunta da rodada: `{ correta, respostaCorreta, dificuldade, pontos }` |
 | `GET` | `/pontuacoes/ranking` | opcional | Ranking solo ou campeonato, por `modo` e `periodo` |
 | `GET` | `/pontuacoes/eu` | usuário | Histórico do jogador, paginado, por `modo` e `periodo` |
-| `POST` | `/pontuacoes` | usuário | Envia respostas e recebe a pontuação |
+| `POST` | `/pontuacoes` | usuário | Envia `{ rodada, respostas }` e recebe a pontuação |
 | `GET` | `/admin/usuarios` | admin | Lista usuários |
 | `POST` | `/admin/usuarios` | admin | Cria usuário |
 | `POST` | `/admin/usuarios/:id/codigo` | admin | Gera novo código inicial |
@@ -189,6 +191,21 @@ Base: `/api`. As rotas marcadas exigem token; as de sessão também exigem perfi
 
 `periodo` aceita `tudo` (padrão), `7`, `30` ou `365` — dias de janela
 deslizante. Valor desconhecido cai em `tudo` em vez de dar erro.
+
+### Rodada
+
+O fluxo do jogo tem três passos e eles se amarram pelo token da rodada:
+
+1. `GET /perguntas` devolve as perguntas **sem** `resposta_correta` e, junto, um
+   `rodada`: um HMAC-SHA256 com o id do jogador, os ids realmente enviados e um
+   nonce aleatório.
+2. `POST /perguntas/responder` com `{ rodada, perguntaId, resposta }` devolve o
+   veredito daquela pergunta.
+3. `POST /pontuacoes` com `{ rodada, respostas }` grava a partida.
+
+Sem o passo 1 não há gabarito para ler; sem o passo 3 a rodada não pontua; e
+cada rodada é de uso único (reenviar dá `409`). Uma partida perfeita forjada
+deixou de ser montável.
 
 O `GET /pontuacoes/eu` também aceita `pagina` e `porPagina` (padrão 10, teto
 50) e devolve `paginacao: { pagina, porPagina, total, temMais }`. O bloco
@@ -251,13 +268,16 @@ não soma duas vezes.
 npm test
 ```
 
-104 testes com `node:test`, sem tocar no seu banco: os testes de API sobem o
-Express contra um SQLite em memória e limpam as tabelas a cada caso.
+133 testes com `node:test`, sem tocar no seu banco: os testes de API sobem o
+Express contra um SQLite em memória e limpam as tabelas a cada caso. A migração
+tem banco próprio, em arquivo descartável.
 
 | Arquivo | Cobre |
 | ------- | ----- |
 | `tests/sessoes.test.js` | Regras de sessão: convite válido, convite não reaproveitável, entrada em partida já iniciada, resposta única por pergunta, permissões de anfitrião |
 | `tests/api.test.js` | Rotas reais: login com código de 4 dígitos e expirado, `/me`, dedup de pontuação, totais do histórico, paginação, ranking, privacidade, `admin` |
+| `tests/seguranca.test.js` | Regressões de segurança: gabarito fora da listagem, token de rodada (ausente, adulterado, alheio, reusado), token de conta apagada, HS256 fixado, HMAC do código inicial, login sem oráculo de enumeração, trava por conta, `TRUST_PROXY=0`, senha sem viés |
+| `tests/migracao.test.js` | Migração sobre um banco legado: cria as colunas novas, converte o código em claro em HMAC sem perder contas, é idempotente |
 | `tests/ambiente.test.js` | `JWT_SECRET` ausente, de exemplo ou curto demais |
 | `tests/periodo.test.js` | Janelas do filtro de período |
 
@@ -267,13 +287,27 @@ versionado.
 
 ## Segurança
 
-- Senhas com hash bcrypt; o código inicial nunca é salvo em texto puro.
+- Senhas com hash bcrypt; o código inicial é guardado só como HMAC-SHA256
+  (`users.codigo_guardado`), e a migração converte e zera o texto puro antigo.
 - O `JWT_SECRET` é validado no boot: sem ele o servidor não sobe, e em produção
   ele recusa o valor de exemplo do `.env.example` ou segredos curtos demais.
+- `GET /api/perguntas` **não devolve o gabarito**. Cada `GET` emite um token de
+  rodada assinado (HMAC) com o jogador e os ids servidos; o veredito de uma
+  pergunta vem de `POST /api/perguntas/responder`, e `POST /api/pontuacoes`
+  só aceita perguntas que estavam na rodada — com uso único. Partida perfeita
+  forjada não é mais possível.
+- Token de sessão assinado em HS256 com o algoritmo fixado no código, e
+  verificado contra o banco: conta apagada ou token forjado não abre nada.
+- Toda falha de login devolve o mesmo corpo, para o erro não servir de oráculo
+  de enumeração de contas.
 - A pontuação é recalculada no servidor a partir do texto enviado, e cada
   pergunta vale uma vez só por partida.
 - Rate limit por IP em login, troca de senha, rotas de admin, envio de
-  pontuação e no resto da API — tetos ajustáveis por ambiente.
+  pontuação e no resto da API — tetos ajustáveis por ambiente. O login também
+  trava **por conta** (5 falhas em 15 min), e o veredito por pergunta conta
+  **por jogador**, para não bloquear uma turma inteira na rede local.
+- Eventos de Socket.IO com teto por socket; a sala pública mostra só se o
+  jogador está em sessão, nunca o código dela.
 - Helmet para os cabeçalhos de segurança; `Cache-Control: no-store` nas rotas
   de autenticação e no health check.
 - CORS por lista de origens, com a rede local liberada só em desenvolvimento.

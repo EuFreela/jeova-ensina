@@ -1,42 +1,26 @@
 const sequelize = require('../config/database');
-
-require('../models/User');
-require('../models/Pergunta');
-require('../models/Pontuacao');
+const { migrarColunas } = require('./migracoes');
 
 /**
- * sync() sozinho nao cria coluna nova em tabela que ja existe, entao as
- * opcoes adicionadas depois do primeiro deploy precisam de um ALTER.
- * Cada item e aditivo e idempotente: rodar varias vezes nao quebra.
+ * Sincroniza o schema com os modelos.
+ *
+ * `sequelize.sync()` cria tabelas novas, mas em uma tabela que ja existe ele
+ * nao adiciona coluna nenhuma — todo campo novo precisa de um ALTER explicito.
+ * Quem faz esses ALTERs e `migracoes.js`, o mesmo que o `criarAdmin.js` usa:
+ * assim nao importa qual dos dois scripts o deploy rodar, as colunas ficam
+ * todas no lugar.
+ *
+ * Idempotente: rodar varias vezes nao quebra nem duplica nada.
  */
-const COLUNAS_NOVAS = [
-  { tabela: 'users', coluna: 'ranking_publico', tipo: 'BOOLEAN NOT NULL DEFAULT 1' },
-];
-
-async function aplicarColunasNovas() {
-  const existentes = new Set(
-    sequelize.options.dialect === 'sqlite'
-      ? (await sequelize.query('PRAGMA table_info(users)'))[0].map((c) => c.name)
-      : (
-          await sequelize.query(
-            "SELECT column_name FROM information_schema.columns WHERE table_name = 'users'",
-            { type: sequelize.QueryTypes.SELECT }
-          )
-        ).map((c) => c.column_name)
-  );
-
-  for (const { tabela, coluna, tipo } of COLUNAS_NOVAS) {
-    if (existentes.has(coluna)) continue;
-    await sequelize.query(`ALTER TABLE ${tabela} ADD COLUMN ${coluna} ${tipo}`);
-    console.log(`Coluna ${tabela}.${coluna} adicionada.`);
-  }
-}
-
 async function main() {
   try {
     await sequelize.authenticate();
+    // Colunas antes do sync: o modelo Pontuacao declara um indice sobre
+    // `pontuacoes.modo`, e o sync tenta criar esse indice em um banco antigo
+    // onde a coluna ainda nao existe.
+    await migrarColunas();
     await sequelize.sync();
-    await aplicarColunasNovas();
+    await migrarColunas();
     console.log('Tabelas sincronizadas com sucesso.');
     await sequelize.close();
     process.exit(0);

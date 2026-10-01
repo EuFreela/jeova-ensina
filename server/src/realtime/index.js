@@ -4,9 +4,38 @@ const User = require('../models/User');
 const GerenciadorSessoes = require('./sessoes');
 const { salaDe } = require('./sessoes');
 const { origemLiberada } = require('../config/origens');
+const { ALGORITMO } = require('../controllers/authController');
 
 const SALA_PRESENCA = 'presenca';
 const SALA_DE = (codigo) => `sessao:${codigo}`;
+
+/**
+ * Teto de eventos por socket, em janela deslizante.
+ *
+ * Os limiters do Express counting por `req.ip` nao alcancam o Socket.IO: uma
+ * conexao autenticada aberta podia disparar `sessao:convidar` ou
+ * `sessao:entrar` em laco, e cada evento plantava uma consulta ao banco com um
+ * `userId` que o proprio cliente escolhia. Nao ha endpoint HTTP para fechar,
+ * porque nao ha endpoint HTTP: o trafego vai pelo canal do socket.
+ *
+ * Janela curta e teto generoso. O limite aqui nao e para punir quem joga
+ * normalmente (um jogador dispara poucos eventos por segundo), e sim para
+ * tornar caro o laco.
+ */
+const EVENTOS_JANELA_MS = 10 * 1000;
+const EVENTOS_MAXIMOS = 60;
+
+/** Cria a factory de handlers com um balde de tokens por socket. */
+function criarContadorEventos(limite = EVENTOS_MAXIMOS, janela = EVENTOS_JANELA_MS) {
+  const marcas = [];
+  return () => {
+    const agora = Date.now();
+    while (marcas.length && agora - marcas[0] > janela) marcas.shift();
+    if (marcas.length >= limite) return false;
+    marcas.push(agora);
+    return true;
+  };
+}
 
 /**
  * Le um booleano de um payload de socket sem a armadilha do Boolean().
@@ -56,11 +85,26 @@ function criarRealtime(httpServer) {
     if (set && set.size) io.to([...set]).emit(evento, dados);
   };
 
+  /**
+   * Lista de quem esta online, enviada para TODOS os sockets conectados.
+   *
+   * Antes cada linha carregava `sessaoCodigo`: o codigo de 6 caracteres de
+   * todas as sessoes vivas. Esse codigo e a unica credencial do convite — quem
+   * o tem entra com `sessao:entrar` sem ser convidado, e o convite deixa de
+   * proteger a sessao. Como a presenca ia para a sala `presenca`, na qual todo
+   * jogador autenticado entra, o codigo de qualquer partida em andamento era
+   * publico para qualquer conta logada, e nao apenas para os convidados.
+   *
+   * A tela so precisa saber se a pessoa esta em outra sessao, nao qual e o
+   * codigo: por isso o campo virou `emSessao` (booleano). Quem precisa do
+   * proprio codigo continua recebendo em `sessao:listar` e em `sessao:estado`,
+   * que so falam da sessao de quem pergunta.
+   */
   const listarOnline = () =>
     Array.from(online.values()).map((u) => ({
       userId: u.userId,
       username: u.username,
-      sessaoCodigo: sessoes.doUsuario(u.userId)?.codigo || null,
+      emSessao: Boolean(sessoes.doUsuario(u.userId)),
     }));
 
   const transmitirPresenca = () => {
@@ -82,7 +126,10 @@ function criarRealtime(httpServer) {
     if (!token) return next(new Error('Token não fornecido'));
 
     try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      // `algorithms` fixado: a aceitacao do token nao pode depender da versao
+      // da biblioteca instalada. E a conta e lida do banco, nao do payload, o
+      // que ja impedia um token de conta apagada abrir um socket.
+      const decoded = jwt.verify(token, process.env.JWT_SECRET, { algorithms: [ALGORITMO] });
       const user = await User.findByPk(decoded.id);
       if (!user) return next(new Error('Usuário não encontrado'));
       socket.data.user = { id: user.id, username: user.username, role: user.role };
@@ -116,10 +163,22 @@ function criarRealtime(httpServer) {
      * Envolve um handler para responder por acknowledgement.
      * Aguarda handlers assincronos (iniciar/criar consultam o banco) e
      * converte qualquer erro em resposta, em vez de promessa rejeitada.
+     *
+     * O balde e por socket, nao por usuario: duas abas do mesmo jogador sao
+     * duas conexoes, e e a conexao que o cliente controla sem custo. O que
+     * barramos e o laco em uma unica conexao.
      */
+    const podeDisparar = criarContadorEventos();
+
     const tratar = (handler) => async (payload, ack) => {
       const responder = typeof ack === 'function' ? ack : () => {};
       try {
+        if (!podeDisparar()) {
+          const mensagem = 'Muitos eventos seguidos. Aguarde um instante.';
+          responder({ ok: false, erro: mensagem, codigo: 429 });
+          socket.emit('erro', { mensagem, codigo: 429 });
+          return;
+        }
         const dados = (await handler(payload || {})) || {};
         responder({ ok: true, ...dados });
       } catch (e) {

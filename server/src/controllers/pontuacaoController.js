@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Pergunta = require('../models/Pergunta');
 const { calcularPontuacao } = require('../utils/scoring');
 const { normalizar } = require('../utils/texto');
+const { lerRodada, rodadaUsada, marcarRodadaUsada } = require('../utils/rodada');
 const {
   normalizar: normalizarPeriodo,
   filtro: filtroDePeriodo,
@@ -27,7 +28,7 @@ function normalizarModo(modo) {
  */
 
 async function salvar(req, res) {
-  const { respostas } = req.body || {};
+  const { respostas, rodada } = req.body || {};
 
   if (!Array.isArray(respostas) || respostas.length === 0) {
     return res.status(400).json({ error: 'Envie ao menos uma resposta' });
@@ -36,7 +37,31 @@ async function salvar(req, res) {
     return res.status(400).json({ error: 'Máximo de 50 respostas por partida' });
   }
 
+  // O token da rodada e o que amarra estas respostas a perguntas que o servidor
+  // realmente entregou a ESTE jogador. Sem ele, o endpoint aceitaria qualquer
+  // lista de `perguntaId` — inclusive as 50 mais faceis, montadas a mao.
+  const lida = lerRodada(rodada, req.userId);
+  if (!lida.ok) {
+    return res.status(400).json({ error: lida.motivo });
+  }
+  if (rodadaUsada(lida.nonce)) {
+    return res.status(409).json({ error: 'Esta partida já foi pontuada.' });
+  }
+
+  // A rodada e consumida ANTES de gravar: repetir o mesmo POST nao cria uma
+  // segunda partida com o mesmo conjunto de respostas.
+  marcarRodadaUsada(lida.nonce);
+
   const ids = respostas.map((r) => Number(r.perguntaId)).filter((id) => Number.isInteger(id));
+
+  // Toda resposta precisa apontar para uma pergunta DA RODADA. Descartar as
+  // estranhas em silencio mudaria `total_perguntas` e esconderia o abuso, entao
+  // a lista inteira e recusada.
+  const foraDaRodada = ids.some((id) => !lida.ids.has(id));
+  if (foraDaRodada) {
+    return res.status(400).json({ error: 'A partida contém perguntas que não foram servidas a você' });
+  }
+
   const perguntas = await Pergunta.findAll({ where: { id: { [Op.in]: ids } } });
   const porId = new Map(perguntas.map((p) => [p.id, p]));
 
@@ -175,16 +200,22 @@ async function ranking(req, res) {
   }
 
   return res.json({
-    ranking: records.map((r, i) => ({
-      posicao: i + 1,
-      user_id: r.user_id,
-      username: nomePorId.get(r.user_id) || 'Jogador removido',
-      recorde: Number(r.recorde),
-      acertos: Number(melhorPorUsuario.get(r.user_id)?.acertos || 0),
-      total_perguntas: Number(melhorPorUsuario.get(r.user_id)?.total_perguntas || 0),
-      jogos: Number(r.jogos),
-      souEu: r.user_id === req.userId,
-    })),
+    // `user_id` NAO e devolvido. O id interno nao e segredo, mas ninguem de
+    // fora precisa dele: a tela usa nome, posicao, recorde e `souEu`. Publicar
+    // menos um campo que so o servidor precisa e o caminho mais curto contra
+    // enumeracao de contas por quem nao esta logado.
+    ranking: records.map((r, i) => {
+      const melhor = melhorPorUsuario.get(r.user_id);
+      return {
+        posicao: i + 1,
+        username: nomePorId.get(r.user_id) || 'Jogador removido',
+        recorde: Number(r.recorde),
+        acertos: Number(melhor?.acertos || 0),
+        total_perguntas: Number(melhor?.total_perguntas || 0),
+        jogos: Number(r.jogos),
+        souEu: r.user_id === req.userId,
+      };
+    }),
     limite,
     modo: modo || 'todos',
     periodo,

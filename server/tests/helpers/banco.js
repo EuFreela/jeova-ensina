@@ -59,7 +59,9 @@ async function criarUsuario(over = {}) {
     password: over.password || 'senha1234',
     role: over.role || 'player',
     codigo: null,
-    senha_expira_em: null,
+    // `senha_expira_em` no passado simula a conta cujo codigo inicial venceu,
+    // que o login trata diferente de senha errada.
+    senha_expira_em: over.senha_expira_em !== undefined ? over.senha_expira_em : null,
     must_change_password: false,
     ranking_publico: over.ranking_publico !== undefined ? over.ranking_publico : true,
   });
@@ -101,6 +103,27 @@ function reqRes(over = {}) {
   return { req: { body: {}, query: {}, ...over }, res };
 }
 
+/**
+ * Busca perguntas na API e devolve o token da rodada junto com os ids
+ * realmente servidos.
+ *
+ * Todo POST em /api/pontuacoes precisa da rodada, entao os testes de
+ * pontuacao passam por aqui em vez de inventar um token. `limite` alto de
+ * proposito: o sorteio e aleatorio, e o teste precisa que a pergunta que
+ * acabou de criar entre no conjunto servido.
+ */
+async function rodadaDe(token, { limite = 50, ...params } = {}) {
+  const res = await request(app)
+    .get('/api/perguntas')
+    .set('Authorization', `Bearer ${token}`)
+    .query({ limite, ...params });
+
+  if (res.status !== 200 || !res.body.rodada) {
+    throw new Error(`nao foi possivel obter rodada: ${res.status} ${JSON.stringify(res.body)}`);
+  }
+  return { rodada: res.body.rodada, ids: res.body.perguntas.map((p) => p.id) };
+}
+
 module.exports = {
   request,
   app,
@@ -110,6 +133,7 @@ module.exports = {
   criarUsuario,
   criarPergunta,
   tokenDe,
+  rodadaDe,
   reqRes,
   User,
   Pergunta,

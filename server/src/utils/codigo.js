@@ -31,6 +31,33 @@ function codigoExpirou(user) {
   return new Date(user.senha_expira_em).getTime() <= Date.now();
 }
 
+/**
+ * O codigo de 4 digitos E a senha inicial: e o que o admin fala em voz alta
+ * e o que o jogador digita no primeiro login. Guardar esse valor em claro na
+ * coluna `codigo` significava que um dump do banco, um backup ou uma leitura
+ * acidental do banco entregava a senha de acesso de todas as contas
+ * provisorias de uma vez.
+ *
+ * O que fica guardado agora e um HMAC do codigo: determina, continua
+ * servindo para o teste de unicidade (mesmo codigo, mesmo HMAC) e nao
+ * devolve o codigo para quem le a tabela. Quem so tem o banco em maos fica
+ * com hashes, nao com senhas.
+ *
+ * O segredo do HMAC e o mesmo do JWT, com um prefixo de dominio para que um
+ * valor daqui nunca possa ser reapresentado como token de sessao.
+ */
+function guardar(codigo) {
+  return crypto
+    .createHmac('sha256', process.env.JWT_SECRET || '')
+    .update(`codigo-inicial:v1:${codigo}`)
+    .digest('hex');
+}
+
+/** O HMAC do codigo, ou null se o codigo nao tiver o formato esperado. */
+function guardarSeguro(codigo) {
+  return codigoValido(codigo) ? guardar(codigo) : null;
+}
+
 module.exports = {
   TAMANHO_CODIGO,
   VALIDADE_CODIGO_MINUTOS,
@@ -38,4 +65,6 @@ module.exports = {
   codigoValido,
   expirarCodigo,
   codigoExpirou,
+  guardar,
+  guardarSeguro,
 };
